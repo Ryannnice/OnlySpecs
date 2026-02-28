@@ -43,7 +43,7 @@ class App {
       onContentChange: (id, content) => this.handleContentChange(id, content),
     });
 
-    this.terminal = new Terminal(terminalElement);
+    this.terminal = new Terminal(terminalElement, this.themeManager.getCurrentTheme());
 
     // Initialize split pane for resizable editor/terminal
     this.splitPane = new SplitPane(editorContainerElement, terminalElement, {
@@ -203,6 +203,9 @@ class App {
         }
       });
     }
+
+    // Update terminal theme
+    this.terminal.setTheme(theme);
 
     // Update theme icon
     this.toolbar.updateThemeButtonIcon();

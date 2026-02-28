@@ -1,6 +1,55 @@
-import { Terminal as XTerminal } from 'xterm';
+import { Terminal as XTerminal, ITheme } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
+
+// Terminal themes matching the app themes
+const DARK_THEME: ITheme = {
+  background: '#1e1e1e',
+  foreground: '#cccccc',
+  cursor: '#cccccc',
+  cursorAccent: '#1e1e1e',
+  selectionBackground: 'rgba(255, 255, 255, 0.3)',
+  black: '#000000',
+  red: '#cd3131',
+  green: '#0dbc79',
+  yellow: '#e5e510',
+  blue: '#2472c8',
+  magenta: '#bc3fbc',
+  cyan: '#11a8cd',
+  white: '#e5e5e5',
+  brightBlack: '#666666',
+  brightRed: '#f14c4c',
+  brightGreen: '#23d18b',
+  brightYellow: '#f5f543',
+  brightBlue: '#3b8eea',
+  brightMagenta: '#d670d6',
+  brightCyan: '#29b8db',
+  brightWhite: '#ffffff',
+};
+
+const LIGHT_THEME: ITheme = {
+  background: '#ffffff',
+  foreground: '#333333',
+  cursor: '#333333',
+  cursorAccent: '#ffffff',
+  selectionBackground: 'rgba(0, 0, 0, 0.2)',
+  black: '#000000',
+  red: '#cd3131',
+  green: '#008000',
+  yellow: '#949800',
+  blue: '#0000ff',
+  magenta: '#cd00cd',
+  cyan: '#008b8b',
+  white: '#e5e5e5',
+  brightBlack: '#666666',
+  brightRed: '#cd0000',
+  brightGreen: '#00cd00',
+  brightYellow: '#cdcd00',
+  brightBlue: '#0000cd',
+  brightMagenta: '#cd00cd',
+  brightCyan: '#00cdcd',
+  brightWhite: '#ffffff',
+};
 
 export class Terminal {
   private container: HTMLElement;
@@ -8,14 +57,15 @@ export class Terminal {
   private fitAddon: FitAddon;
   private webLinksAddon: WebLinksAddon;
   private sessionId: string;
-  private pid: number | null = null;
   private isDisposed = false;
   private unsubscribeData?: () => void;
   private unsubscribeExit?: () => void;
+  private currentTheme: 'light' | 'dark' = 'dark';
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, theme: 'light' | 'dark' = 'dark') {
     this.container = container;
     this.sessionId = `terminal-${Date.now()}-${Math.random()}`;
+    this.currentTheme = theme;
 
     this.xterm = new XTerminal({
       allowProposedApi: true,
@@ -28,29 +78,7 @@ export class Terminal {
       lineHeight: 1.2,
       letterSpacing: 0,
       scrollback: 1000,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#cccccc',
-        cursorAccent: '#1e1e1e',
-        selectionBackground: 'rgba(255, 255, 255, 0.3)',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#ffffff',
-      },
+      theme: theme === 'dark' ? DARK_THEME : LIGHT_THEME,
     });
 
     this.fitAddon = new FitAddon();
@@ -101,8 +129,7 @@ export class Terminal {
     if (!window.electronAPI) return;
 
     try {
-      const result = await window.electronAPI.createTerminal(this.sessionId);
-      this.pid = result.pid;
+      await window.electronAPI.createTerminal(this.sessionId);
 
       // Listen for data from PTY
       this.unsubscribeData = window.electronAPI.onTerminalData(this.sessionId, (data) => {
@@ -141,6 +168,13 @@ export class Terminal {
 
   focus(): void {
     this.xterm.focus();
+  }
+
+  setTheme(theme: 'light' | 'dark'): void {
+    if (this.currentTheme !== theme && !this.isDisposed) {
+      this.currentTheme = theme;
+      this.xterm.options.theme = theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+    }
   }
 
   dispose(): void {

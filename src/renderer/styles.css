@@ -479,6 +479,11 @@ body {
   border-bottom: 1px solid var(--border-color);
   height: 32px;
   flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.terminal-header {
+  border-top: 1px solid var(--border-color);
 }
 
 .terminal-title {
