@@ -30,9 +30,21 @@ export class EditorStateManager {
   private listeners: Set<(editors: EditorState[]) => void> = new Set();
   private autoSaveTimer: Map<string, NodeJS.Timeout> = new Map();
   private readonly AUTO_SAVE_DELAY = 500;
+  private loadPromise: Promise<void> | null = null;
 
   constructor() {
-    this.loadFromStorage();
+    this.loadPromise = this.loadFromStorage();
+  }
+
+  /**
+   * Wait for initial load to complete
+   */
+  async waitForLoad(): Promise<void> {
+    if (this.loadPromise) {
+      await this.loadPromise;
+      this.loadPromise = null;
+    }
+    // If already loaded, this just returns immediately
   }
 
   // Subscribe to state changes

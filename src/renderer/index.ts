@@ -1,19 +1,30 @@
 import { TabBar } from './components/TabBar';
+import { Toolbar } from './components/Toolbar';
 import { EditorContainer } from './components/EditorContainer';
 import { EditorStateManager, EditorState } from './state/EditorStateManager';
+import { ThemeManager } from './state/ThemeManager';
 
 class App {
   private stateManager: EditorStateManager;
+  private themeManager: ThemeManager;
+  private toolbar: Toolbar;
   private tabBar: TabBar;
   private editorContainer: EditorContainer;
   private unsubscribe: () => void;
+  private themeUnsubscribe: () => void;
 
   constructor() {
     this.stateManager = new EditorStateManager();
+    this.themeManager = new ThemeManager();
 
     // Initialize UI components
+    const toolbarContainer = document.getElementById('toolbar')!;
     const tabBarContainer = document.getElementById('tab-bar')!;
     const editorContainerElement = document.getElementById('editor-container')!;
+
+    this.toolbar = new Toolbar(toolbarContainer, {
+      onToggleTheme: () => this.handleToggleTheme(),
+    });
 
     this.tabBar = new TabBar(tabBarContainer, {
       onNewTab: () => this.handleNewTab(),
@@ -32,6 +43,11 @@ class App {
       this.render(editors);
     });
 
+    // Subscribe to theme changes
+    this.themeUnsubscribe = this.themeManager.subscribe((theme) => {
+      this.handleThemeChange(theme);
+    });
+
     // Set up keyboard shortcuts
     this.setupKeyboardShortcuts();
 
@@ -40,13 +56,22 @@ class App {
       this.stateManager.saveAllEditors();
       this.stateManager.disposeAll();
     });
+
+    // Update initial theme icon
+    this.toolbar.updateThemeButtonIcon();
   }
 
   private async init(): Promise<void> {
     // Wait for Monaco to load
     await this.waitForMonaco();
 
-    // Initial render
+    // Wait for EditorContainer to be ready with Monaco
+    await this.editorContainer.waitForMonaco();
+
+    // Wait for editor state to be loaded from storage
+    await this.stateManager.waitForLoad();
+
+    // Initial render with loaded editors
     this.render(this.stateManager.getAllEditors());
   }
 
@@ -91,25 +116,20 @@ class App {
 
   private manageMonacoInstances(editors: EditorState[]): void {
     editors.forEach((editor) => {
-      const element = this.getEditorElement(editor.id);
-      const shouldHaveInstance = this.isEditorVisible(element);
-
-      if (shouldHaveInstance && !editor.monacoInstance) {
-        // Create Monaco instance
+      // Create Monaco instance for all editors (not just visible ones)
+      // Monaco is efficient enough with automaticLayout to handle 100+ instances
+      if (!editor.monacoInstance) {
         const monacoInstance = this.editorContainer.createMonacoEditor(
           editor.id,
           editor.content,
-          editor.name
+          editor.name,
+          this.themeManager.getMonacoTheme()
         );
 
         if (monacoInstance) {
           this.stateManager.setMonacoInstance(editor.id, monacoInstance);
         }
-      } else if (!shouldHaveInstance && editor.monacoInstance) {
-        // Dispose Monaco instance to free memory
-        this.editorContainer.disposeMonacoEditor(editor.id, editor.monacoInstance);
-        this.stateManager.setMonacoInstance(editor.id, undefined);
-      } else if (shouldHaveInstance && editor.monacoInstance) {
+      } else {
         // Update content if needed
         const currentContent = editor.monacoInstance.getValue();
         if (currentContent !== editor.content) {
@@ -125,23 +145,6 @@ class App {
     return document.querySelector(`.editor-item[data-id="${id}"]`);
   }
 
-  private isEditorVisible(element: HTMLElement | null): boolean {
-    if (!element) return false;
-
-    const container = document.querySelector('.editor-container') as HTMLElement;
-    if (!container) return false;
-
-    const containerRect = container.getBoundingClientRect();
-    const elementRect = element.getBoundingClientRect();
-
-    // Consider visible if within 3 editor widths of viewport
-    const bufferZone = 2550; // 3 * 850px
-
-    return (
-      elementRect.right > containerRect.left - bufferZone &&
-      elementRect.left < containerRect.right + bufferZone
-    );
-  }
 
   private async handleNewTab(): Promise<void> {
     const editor = await this.stateManager.createEditor();
@@ -171,12 +174,39 @@ class App {
     this.stateManager.updateEditorContent(id, content);
   }
 
+  private handleToggleTheme(): void {
+    this.themeManager.toggleTheme();
+  }
+
+  private handleThemeChange(theme: 'light' | 'dark'): void {
+    // Update Monaco theme for all active editors
+    const editors = this.stateManager.getAllEditors();
+    const monaco = (window as any).monaco;
+
+    if (monaco) {
+      editors.forEach((editor) => {
+        if (editor.monacoInstance) {
+          monaco.editor.setTheme(this.themeManager.getMonacoTheme());
+        }
+      });
+    }
+
+    // Update theme icon
+    this.toolbar.updateThemeButtonIcon();
+  }
+
   private setupKeyboardShortcuts(): void {
     document.addEventListener('keydown', (e) => {
       // Ctrl/Cmd + T: New tab
-      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 't' && !e.shiftKey) {
         e.preventDefault();
         this.handleNewTab();
+      }
+
+      // Ctrl/Cmd + Shift + T: Toggle theme
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        this.handleToggleTheme();
       }
 
       // Ctrl/Cmd + W: Close current tab
@@ -201,6 +231,7 @@ class App {
 
   destroy(): void {
     this.unsubscribe();
+    this.themeUnsubscribe();
     this.stateManager.disposeAll();
   }
 }

@@ -2,6 +2,8 @@
 :root {
   --tab-height: 40px;
   --editor-width: 850px;
+
+  /* Dark theme (default) */
   --tab-bg: #2d2d2d;
   --tab-active: #1e1e1e;
   --tab-hover: #353535;
@@ -13,6 +15,29 @@
   --bg-primary: #1e1e1e;
   --bg-secondary: #2d2d2d;
   --bg-tertiary: #3e3e3e;
+  --scrollbar-track: #1e1e1e;
+  --scrollbar-thumb: #4e4e4e;
+  --scrollbar-thumb-hover: #5e5e5e;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Light theme */
+:root[data-theme="light"] {
+  --tab-bg: #f0f0f0;
+  --tab-active: #ffffff;
+  --tab-hover: #e8e8e8;
+  --border-color: #d0d0d0;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --accent-color: #0066cc;
+  --accent-hover: #0052a3;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e0e0e0;
+  --scrollbar-track: #f0f0f0;
+  --scrollbar-thumb: #c0c0c0;
+  --scrollbar-thumb-hover: #a0a0a0;
+  --shadow-color: rgba(0, 0, 0, 0.15);
 }
 
 * {
@@ -44,6 +69,56 @@ body {
   width: 100vw;
 }
 
+/* Toolbar Styles */
+.toolbar {
+  height: 44px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.toolbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-color);
+  letter-spacing: -0.5px;
+}
+
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar .theme-toggle-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar .theme-toggle-btn:hover {
+  background: var(--tab-hover);
+  border-color: var(--accent-color);
+}
+
+.toolbar .theme-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
 /* Tab Bar Styles */
 .tab-bar {
   height: var(--tab-height);
@@ -65,14 +140,17 @@ body {
   font-size: 12px;
   font-weight: 500;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .new-tab-btn:hover {
-  background: #4e4e4e;
+  background: var(--tab-hover);
 }
 
 .new-tab-btn:active {
-  background: #2e2e2e;
+  filter: brightness(0.9);
 }
 
 .tabs-container {
@@ -193,35 +271,88 @@ body {
 }
 
 .editor-container::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--scrollbar-track);
 }
 
 .editor-container::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
+  background: var(--scrollbar-thumb);
   border-radius: 35px;
-  border: 15px solid var(--bg-primary);
+  border: 15px solid var(--scrollbar-track);
 }
 
 .editor-container::-webkit-scrollbar-thumb:hover {
-  background: #5e5e5e;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .editors-wrapper {
   display: flex;
   flex-direction: row;
   height: 100%;
+  align-items: stretch;
+}
+
+.editor-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
 }
 
 .editor-item {
-  width: var(--editor-width);
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
   border-right: 1px solid var(--border-color);
   height: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
 .monaco-container {
   height: 100%;
   width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.monaco-container > * {
+  /* Ensure Monaco editor can receive all events */
+  pointer-events: auto !important;
+}
+
+.resize-handle {
+  width: 8px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+  z-index: 5;
+  transition: background-color 0.15s;
+  pointer-events: auto;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background-color: var(--accent-color);
+  z-index: 15;
+}
+
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 40px;
+  background-color: transparent;
+  border-radius: 2px;
+  transition: background-color 0.15s;
+}
+
+.resize-handle:hover::before,
+.resize-handle:active::before {
+  background-color: var(--text-primary);
 }
 
 /* Rename Modal */
@@ -231,7 +362,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--shadow-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -244,7 +375,7 @@ body {
   border-radius: 8px;
   border: 1px solid var(--border-color);
   min-width: 300px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px var(--shadow-color);
 }
 
 .rename-dialog label {
