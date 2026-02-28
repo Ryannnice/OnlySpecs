@@ -1,3 +1,3 @@
 UI:
 
-create an electron app that allows user to have multiple(>100) monaco editors openning. all monica editors are open and layout in horizontal one by one. user can horizontal scroll bar to drag and move and scroll the row of monaco editors. also you need to provide a tab bar. when user click a tab, the UI should jump to the monaco editor. also you need to provide a button to create new tab. also you need to allow user to 
+create an electron app that allows user to have multiple(>100) monaco editors openning. all monica editors are open and layout in horizontal one by one. user can horizontal scroll bar to drag and move and scroll the row of monaco editors. also you need to provide a tab bar. when user click a tab, the UI should jump to the monaco editor. also you need to provide a button to create new tab. also you need to allow user to an

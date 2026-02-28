@@ -13,7 +13,10 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ['electron'],
+      external: ['electron', 'node-pty'],
     },
+  },
+  optimizeDeps: {
+    exclude: ['node-pty'],
   },
 });

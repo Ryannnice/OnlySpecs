@@ -30,8 +30,42 @@ const electronAPI = {
 
   // Increment next index
   incrementNextIndex: (): Promise<number> => ipcRenderer.invoke('editor:increment-next-index'),
+
+  // PTY Terminal APIs
+  createTerminal: (sessionId: string, cwd?: string): Promise<{ pid: number }> =>
+    ipcRenderer.invoke('terminal:create', sessionId, cwd),
+
+  writeTerminal: (sessionId: string, data: string): Promise<void> =>
+    ipcRenderer.invoke('terminal:write', sessionId, data),
+
+  resizeTerminal: (sessionId: string, cols: number, rows: number): Promise<void> =>
+    ipcRenderer.invoke('terminal:resize', sessionId, cols, rows),
+
+  killTerminal: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke('terminal:kill', sessionId),
+
+  // Listen for terminal data
+  onTerminalData: (sessionId: string, callback: (data: string) => void) => {
+    const listener = (_event: any, data: string) => callback(data);
+    ipcRenderer.on(`terminal:data-${sessionId}`, listener);
+    return () => ipcRenderer.removeListener(`terminal:data-${sessionId}`, listener);
+  },
+
+  // Listen for terminal exit
+  onTerminalExit: (sessionId: string, callback: (exitCode: number, signal: number) => void) => {
+    const listener = (_event: any, data: { exitCode: number; signal: number }) =>
+      callback(data.exitCode, data.signal);
+    ipcRenderer.once(`terminal:exit-${sessionId}`, listener);
+    return () => ipcRenderer.removeListener(`terminal:exit-${sessionId}`, listener);
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
 export type ElectronAPI = typeof electronAPI;
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}

@@ -260,10 +260,11 @@ body {
 
 /* Editor Container Styles */
 .editor-container {
-  flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--bg-primary);
+  /* Height is controlled by SplitPane */
+  min-height: 100px;
 }
 
 .editor-container::-webkit-scrollbar {
@@ -459,3 +460,115 @@ body {
   background: var(--accent-color);
   color: white;
 }
+
+/* Terminal Styles */
+.terminal-container {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  /* Flex properties are controlled by SplitPane */
+  min-height: 150px;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.terminal-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.terminal-xterm {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* xterm.js overrides */
+.terminal-xterm .xterm {
+  height: 100%;
+  width: 100%;
+}
+
+.terminal-xterm .xterm .xterm-viewport {
+  overflow-y: auto;
+}
+
+.terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid var(--bg-primary);
+}
+
+.terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Split Resize Handle */
+.split-resize-handle {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+  position: relative;
+  z-index: 100;
+}
+
+.split-resize-handle:hover {
+  background: var(--tab-hover);
+}
+
+.split-resize-handle.active {
+  background: var(--accent-color);
+}
+
+.resize-handle-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.resize-handle-dots::before,
+.resize-handle-dots::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+}
+
+.split-resize-handle:hover .resize-handle-dots::before,
+.split-resize-handle:hover .resize-handle-dots::after {
+  background: var(--accent-color);
+}
+
+.split-resize-handle.active .resize-handle-dots::before,
+.split-resize-handle.active .resize-handle-dots::after {
+  background: #ffffff;
+}
+
+

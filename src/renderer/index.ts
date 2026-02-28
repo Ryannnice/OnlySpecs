@@ -1,6 +1,8 @@
 import { TabBar } from './components/TabBar';
 import { Toolbar } from './components/Toolbar';
 import { EditorContainer } from './components/EditorContainer';
+import { Terminal } from './components/Terminal';
+import { SplitPane } from './components/SplitPane';
 import { EditorStateManager, EditorState } from './state/EditorStateManager';
 import { ThemeManager } from './state/ThemeManager';
 
@@ -10,6 +12,8 @@ class App {
   private toolbar: Toolbar;
   private tabBar: TabBar;
   private editorContainer: EditorContainer;
+  private terminal: Terminal;
+  private splitPane: SplitPane;
   private unsubscribe: () => void;
   private themeUnsubscribe: () => void;
 
@@ -21,6 +25,7 @@ class App {
     const toolbarContainer = document.getElementById('toolbar')!;
     const tabBarContainer = document.getElementById('tab-bar')!;
     const editorContainerElement = document.getElementById('editor-container')!;
+    const terminalElement = document.getElementById('terminal')!;
 
     this.toolbar = new Toolbar(toolbarContainer, {
       onToggleTheme: () => this.handleToggleTheme(),
@@ -36,6 +41,14 @@ class App {
 
     this.editorContainer = new EditorContainer(editorContainerElement, {
       onContentChange: (id, content) => this.handleContentChange(id, content),
+    });
+
+    this.terminal = new Terminal(terminalElement);
+
+    // Initialize split pane for resizable editor/terminal
+    this.splitPane = new SplitPane(editorContainerElement, terminalElement, {
+      minHeight: 100,
+      maxHeight: window.innerHeight - 250,
     });
 
     // Subscribe to state changes
@@ -61,7 +74,7 @@ class App {
     this.toolbar.updateThemeButtonIcon();
   }
 
-  private async init(): Promise<void> {
+  async init(): Promise<void> {
     // Wait for Monaco to load
     await this.waitForMonaco();
 
@@ -232,6 +245,7 @@ class App {
   destroy(): void {
     this.unsubscribe();
     this.themeUnsubscribe();
+    this.terminal.dispose();
     this.stateManager.disposeAll();
   }
 }

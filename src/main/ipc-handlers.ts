@@ -1,4 +1,5 @@
 import { ipcMain, dialog } from 'electron';
+import * as pty from 'node-pty';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -150,5 +151,67 @@ export function registerIpcHandlers() {
     metadata.nextIndex++;
     await saveMetadata(metadata);
     return index;
+  });
+
+  // PTY Terminal management
+  const ptySessions = new Map<string, pty.IPty>();
+
+  // Create a new PTY session
+  ipcMain.handle('terminal:create', async (_event, sessionId: string, cwd?: string): Promise<{ pid: number }> => {
+    const shell = process.env.SHELL || '/bin/bash';
+    const ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 24,
+      cwd: cwd || os.homedir(),
+      env: process.env as { [key: string]: string },
+    });
+
+    ptySessions.set(sessionId, ptyProcess);
+
+    // Send data back to renderer when PTY emits data
+    ptyProcess.onData((data) => {
+      _event.sender.send(`terminal:data-${sessionId}`, data);
+    });
+
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      _event.sender.send(`terminal:exit-${sessionId}`, { exitCode, signal });
+      ptySessions.delete(sessionId);
+    });
+
+    return { pid: ptyProcess.pid };
+  });
+
+  // Write to PTY
+  ipcMain.handle('terminal:write', async (_event, sessionId: string, data: string): Promise<void> => {
+    const ptyProcess = ptySessions.get(sessionId);
+    if (ptyProcess) {
+      ptyProcess.write(data);
+    }
+  });
+
+  // Resize PTY
+  ipcMain.handle('terminal:resize', async (_event, sessionId: string, cols: number, rows: number): Promise<void> => {
+    const ptyProcess = ptySessions.get(sessionId);
+    if (ptyProcess) {
+      ptyProcess.resize(cols, rows);
+    }
+  });
+
+  // Kill PTY
+  ipcMain.handle('terminal:kill', async (_event, sessionId: string): Promise<void> => {
+    const ptyProcess = ptySessions.get(sessionId);
+    if (ptyProcess) {
+      ptyProcess.kill();
+      ptySessions.delete(sessionId);
+    }
+  });
+
+  // Cleanup all PTY sessions on app quit
+  ipcMain.on('terminal:cleanup', () => {
+    for (const [sessionId, ptyProcess] of ptySessions) {
+      ptyProcess.kill();
+    }
+    ptySessions.clear();
   });
 }

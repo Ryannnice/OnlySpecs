@@ -54,3 +54,9 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// Cleanup PTY sessions on quit
+app.on('before-quit', () => {
+  ipcMain.emit('terminal:cleanup');
+});
+
