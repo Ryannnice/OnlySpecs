@@ -1,6 +1,7 @@
 import { TabBar } from './components/TabBar';
 import { Toolbar } from './components/Toolbar';
 import { EditorContainer } from './components/EditorContainer';
+import { Modal } from './components/Modal';
 import { EditorStateManager, EditorState } from './state/EditorStateManager';
 import { ThemeManager } from './state/ThemeManager';
 
@@ -24,6 +25,7 @@ class App {
 
     this.toolbar = new Toolbar(toolbarContainer, {
       onToggleTheme: () => this.handleToggleTheme(),
+      onGetSpecs: () => this.handleGetSpecs(),
     });
 
     this.tabBar = new TabBar(tabBarContainer, {
@@ -178,6 +180,75 @@ class App {
 
   private handleToggleTheme(): void {
     this.themeManager.toggleTheme();
+  }
+
+  private handleGetSpecs(): void {
+    // Create modal content
+    const content = document.createElement('div');
+    content.innerHTML = `
+      <div style="margin-bottom: 20px;">
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Select a source to import specifications:</p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.2s;">
+            <input type="radio" name="spec-source" value="github" style="margin: 0;">
+            <div>
+              <div style="font-weight: 500; color: var(--text-primary);">GitHub Repository</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a GitHub repository URL</div>
+            </div>
+          </label>
+          <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.2s;">
+            <input type="radio" name="spec-source" value="file" style="margin: 0;">
+            <div>
+              <div style="font-weight: 500; color: var(--text-primary);">Local File</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a local file on your computer</div>
+            </div>
+          </label>
+          <label style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.2s;">
+            <input type="radio" name="spec-source" value="url" style="margin: 0;">
+            <div>
+              <div style="font-weight: 500; color: var(--text-primary);">URL</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a direct URL</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    `;
+
+    // Add hover effects for radio labels
+    content.querySelectorAll('label').forEach(label => {
+      label.addEventListener('mouseenter', () => {
+        (label as HTMLElement).style.borderColor = 'var(--accent-color)';
+        (label as HTMLElement).style.background = 'var(--bg-tertiary)';
+      });
+      label.addEventListener('mouseleave', () => {
+        const input = label.querySelector('input') as HTMLInputElement;
+        if (!input?.checked) {
+          (label as HTMLElement).style.borderColor = 'var(--border-color)';
+          (label as HTMLElement).style.background = 'var(--bg-primary)';
+        }
+      });
+    });
+
+    // Create and show modal
+    const modal = new Modal({
+      title: 'Get Specs from...',
+      content: content,
+      onConfirm: () => {
+        const selected = content.querySelector('input[name="spec-source"]:checked') as HTMLInputElement;
+        if (selected) {
+          console.log('Selected source:', selected.value);
+          // TODO: Implement the actual import logic
+        }
+      },
+      onCancel: () => {
+        console.log('Import cancelled');
+      },
+      confirmText: 'Import',
+      cancelText: 'Cancel',
+      width: '500px',
+    });
+
+    modal.open();
   }
 
   private handleThemeChange(theme: 'light' | 'dark'): void {

@@ -1,16 +1,19 @@
 export class Toolbar {
   private container: HTMLElement;
-  private themeToggleBtn: HTMLElement;
+  private themeToggleBtn!: HTMLElement;
   private onToggleTheme: () => void;
+  private onGetSpecs: () => void;
 
   constructor(
     container: HTMLElement,
     options: {
       onToggleTheme: () => void;
+      onGetSpecs?: () => void;
     }
   ) {
     this.container = container;
     this.onToggleTheme = options.onToggleTheme;
+    this.onGetSpecs = options.onGetSpecs || (() => {});
 
     this.render();
   }
@@ -29,11 +32,28 @@ export class Toolbar {
     const controls = document.createElement('div');
     controls.className = 'toolbar-controls';
 
+    // Get Specs button
+    const getSpecsBtn = this.createGetSpecsBtn();
+    controls.appendChild(getSpecsBtn);
+
     // Theme toggle button
     this.themeToggleBtn = this.createThemeToggleBtn();
     controls.appendChild(this.themeToggleBtn);
 
     this.container.appendChild(controls);
+  }
+
+  private createGetSpecsBtn(): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'get-specs-btn';
+    btn.textContent = 'Get Specs from...';
+    btn.title = 'Import specifications from external sources';
+
+    btn.addEventListener('click', () => {
+      this.onGetSpecs();
+    });
+
+    return btn;
   }
 
   private createThemeToggleBtn(): HTMLElement {
