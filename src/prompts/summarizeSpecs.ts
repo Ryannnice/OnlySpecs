@@ -2,285 +2,550 @@ export const summarizeSpecs = `
 
 Please read the repository at this directory. It's a software project. Your role is to analyze the project and summarize the specifications of the project. The specifications should be in a markdown format.
 
-The target of the specifications is to provide a detailed and informative description of the project, including its features, functionalities, and requirements. The specifications should be comprehensive and cover all aspects of the project, such as user interface, project management, and any other relevant components. 
+The target of the specifications is to provide a VERY VERY detailed and informative description of the project, including its features, functionalities, and requirements. The specifications should be comprehensive and cover all aspects of the project, such as user interface, project management, and any other relevant components. 
 
 You need to create a file called "output_specs.md" in the root directory of the project, and write the specifications in that file. 
 
 User will use the specifications version v1 to understand the project and its requirements, modify the project, and do code implementation or code refactoring in version v2. So please follow the instructions below to write the specifications:
 
-1. API Contract (Most Critical)
+📘 MASTER SOFTWARE SPECIFICATION DOCUMENT
 
-You must preserve:
+(System Definition & Boundary Contract Document)
 
-Endpoint paths (/users/{id})
+1️⃣ Executive Overview
+1.1 System Purpose
 
-HTTP methods (GET vs POST)
+What problem does the system solve?
+
+Who are the primary users?
+
+What business goals does it support?
+
+What is explicitly out of scope?
+
+1.2 System Context
+
+Where does this system sit in the ecosystem?
+
+What external systems interact with it?
+
+What are upstream and downstream dependencies?
+
+1.3 System Boundary Definition (CRITICAL)
+
+Clearly define:
+
+What is inside this system
+
+What is outside
+
+What data crosses boundaries
+
+Who owns which responsibility
+
+This prevents architectural drift.
+
+2️⃣ Overall Functional Specification
+2.1 Core Capabilities
+
+List major features grouped by domain.
+
+2.2 Use Cases
+
+For each use case:
+
+Actor
+
+Preconditions
+
+Main flow
+
+Alternative flows
+
+Failure cases
+
+Postconditions
+
+2.3 User Roles
+
+Role definitions
+
+Capabilities
+
+Access scope
+
+3️⃣ Overall Behavioral Design
+
+This defines semantic compatibility.
+
+3.1 Domain Model
+
+Define:
+
+Entities
+
+Value objects
+
+Aggregates
+
+Relationships
+
+Invariants
+
+3.2 State Machines
+
+For each major entity:
+
+States
+
+Valid transitions
+
+Transition triggers
+
+Illegal transitions
+
+Timeout behavior
+
+3.3 Business Rules
+
+Define explicitly:
+
+Validation rules
+
+Calculation formulas
+
+Side effects
+
+Idempotency rules
+
+Ordering guarantees
+
+Consistency expectations
+
+3.4 Workflow & Orchestration
+
+Sync vs async flows
+
+Background jobs
+
+Scheduled tasks
+
+Event-driven flows
+
+Saga / transaction coordination
+
+4️⃣ Overall System Architecture
+4.1 Architecture Style
+
+Monolith / Microservices / Modular Monolith / Event-Driven
+
+Rationale
+
+4.2 Component Breakdown
+
+For each component:
+
+Responsibility
+
+Inputs
+
+Outputs
+
+Dependencies
+
+Ownership
+
+4.3 Communication Model
+
+REST / gRPC / GraphQL
+
+Messaging system
+
+Sync vs async boundaries
+
+Retry policy
+
+Circuit breaking
+
+Timeout rules
+
+4.4 Deployment Topology
+
+Runtime units
+
+Scaling strategy
+
+Load balancing
+
+Multi-region strategy
+
+5️⃣ API & Interface Contracts
+5.1 Public APIs
+
+For each endpoint:
+
+Path
+
+Method
 
 Request schema
 
 Response schema
 
-Field names
-
-Field types
-
-Required vs optional
-
-Error format
-
 Status codes
 
-Authentication mechanism
+Error model
 
-Pagination format
+Versioning policy
 
-If using:
+Deprecation policy
 
-REST → OpenAPI spec
+5.2 Internal APIs
 
-GraphQL → Schema
+Service-to-service contracts
 
-gRPC → Protobuf
+Authentication between services
 
-This is usually the #1 compatibility layer.
-
-2. Data Schema (Database Contract)
-
-If external services or old code depend on DB structure, you must preserve:
-
-Table names
-
-Column names
-
-Column types
-
-Constraints
-
-Index behavior (sometimes)
-
-Default values
-
-Nullability
-
-Enum values
-
-Backward-compatible DB changes:
-
-Add nullable column ✅
-
-Add new table ✅
-
-Add index ✅
-
-Breaking changes:
-
-Remove column ❌
-
-Rename column ❌
-
-Change type ❌
-
-Change meaning of enum ❌
-
-3. Event / Message Contracts
-
-If your system publishes events (Kafka, SNS, SQS):
-
-You must preserve:
+5.3 Event Contracts
 
 Topic names
 
 Event schema
 
-Field names/types
-
-Event semantics
-
-Breaking event schema breaks downstream consumers.
-
-4. Storage Format Contract
-
-If you store files (S3, local FS, blob storage):
-
-Preserve:
-
-Directory structure
-
-File naming pattern
-
-Serialization format (JSON vs Avro vs CSV)
-
-Compression type
-
-Encoding (UTF-8, etc.)
-
-Version markers
-
-Especially important for:
-
-Data pipelines
-
-ML systems
-
-Analytics jobs
-
-5. Network-Level Contract (Usually Less Important)
-
-Domain/IP/port are typically deployment details — not spec-level contracts.
-
-Preserve ONLY if:
-
-Hardcoded clients depend on them
-
-Third-party integrations use fixed URLs
-
-Best practice:
-Hide these behind DNS + versioned paths.
-
-So this is environment compatibility, not logical compatibility.
-
-6. Authentication & Authorization Model
-
-Preserve:
-
-Token format (JWT claims)
-
-OAuth scopes
-
-Role names
-
-Permission logic
-
-Header format
-
-Changing auth can silently break integrations.
-
-7. Business Logic Semantics (Often Forgotten)
-
-Even if API schema doesn’t change, behavior might.
-
-Example:
-
-Old: discount = 10%
-
-New: discount = 10% only above $100
-
-That’s breaking compatibility.
-
-You must preserve:
-
-Meaning of fields
-
-Calculation rules
-
-Side effects
-
-Transaction behavior
-
-This is semantic compatibility.
-
-8. Error & Edge Case Behavior
-
-Clients sometimes depend on:
-
-Specific error codes
-
-Retry behavior
-
-Idempotency behavior
-
-Timeout behavior
+Required fields
 
 Ordering guarantees
 
-Even changing error message format can break strict clients.
+Retry semantics
 
-9. Configuration & Environment Contracts
+5.4 Webhooks
 
-Sometimes forgotten:
+Payload schema
 
-Environment variables
+Delivery guarantee
 
-Feature flags
+Signature verification
 
-CLI flags
+6️⃣ Data & Persistence Design
+6.1 Database Choice
 
-Startup parameters
+SQL / NoSQL / Hybrid
 
-Terraform variable names
+Rationale
 
-Breaking these breaks deployment pipelines.
+6.2 Schema Definition
 
-10. Observability Contract (Advanced)
+Tables / collections
 
-If other systems parse:
+Fields and types
 
-Log formats
+Nullability
 
-Metric names
+Constraints
 
-Prometheus labels
+Indexes
 
-Tracing fields
+Enum values
 
-Changing them can break monitoring or billing.
+6.3 Migration Strategy
 
-Compatibility Checklist
+Backward compatibility rules
 
----
+Zero-downtime migrations
 
-To ensure V2 is backward-compatible with V1, preserve:
+Data transformation policies
 
-External Interface Layer
+6.4 Transaction Model
 
-API schema
+Isolation level
 
-Event schema
+Cross-entity consistency rules
 
-File format
+Compensating transactions
 
-CLI interface
+6.5 Caching Strategy
 
-Data Layer
+What is cached?
 
-DB schema
+TTL
 
-Storage format
+Invalidation rules
 
-Migration behavior
+Cache consistency guarantees
 
-Semantic Layer
+7️⃣ Storage & File Design
 
-Business rules
+If files are stored:
 
-Side effects
+Storage provider
 
-Transaction guarantees
+Directory structure
 
-Infrastructure Contract
+Naming conventions
 
-URLs (if public)
+Serialization format
 
-Auth mechanism
+Encoding
 
-IAM roles
+Compression
 
-Environment config
+Retention policy
 
-------
+Versioning scheme
 
-Professional Approach:
+8️⃣ Security & Access Control
+8.1 Authentication
 
-Large organizations like Amazon and Google enforce:
+Mechanism (JWT, OAuth, API Key, Session)
 
-Strict API versioning
+Token format
 
-Backward-compatible database migrations
+Expiration rules
 
-Event schema registry validation
+8.2 Authorization
 
-Contract testing (consumer-driven tests)
+RBAC / ABAC model
 
-Semantic versioning rules
+Permission definitions
+
+Scope model
+
+Multi-tenant isolation rules
+
+8.3 Data Protection
+
+Encryption at rest
+
+Encryption in transit
+
+Key management
+
+PII handling
+
+8.4 Audit Logging
+
+What actions are logged?
+
+Log schema
+
+Retention policy
+
+9️⃣ Non-Functional Requirements
+9.1 Performance
+
+Expected latency
+
+Throughput targets
+
+Concurrency limits
+
+9.2 Scalability
+
+Horizontal scaling rules
+
+Bottleneck analysis
+
+9.3 Availability
+
+SLA
+
+Failover design
+
+Backup strategy
+
+9.4 Consistency Model
+
+Strong / Eventual
+
+Read-after-write guarantees
+
+9.5 Reliability
+
+Retry rules
+
+Idempotency rules
+
+Dead-letter handling
+
+🔟 Configuration & Environment
+10.1 Environment Definition
+
+Dev / Staging / Production
+
+Config differences
+
+10.2 Environment Variables
+
+Required variables
+
+Defaults
+
+Validation rules
+
+10.3 Feature Flags
+
+Flag definitions
+
+Default states
+
+Rollout strategy
+
+1️⃣1️⃣ Technology Stack
+11.1 Programming Language(s)
+
+Version
+
+Rationale
+
+11.2 Frameworks
+
+Web framework
+
+ORM
+
+Messaging library
+
+11.3 Infrastructure
+
+Cloud provider
+
+Containerization
+
+Orchestration
+
+CI/CD pipeline
+
+11.4 Third-Party Dependencies
+
+For each:
+
+Purpose
+
+Version constraints
+
+Replacement strategy
+
+1️⃣2️⃣ Dependency Graph
+
+Internal module dependencies
+
+External service dependencies
+
+Database dependencies
+
+Version compatibility requirements
+
+Include:
+
+Upgrade policy
+
+Breaking-change detection policy
+
+1️⃣3️⃣ Observability & Operations
+13.1 Logging
+
+Log format
+
+Required fields
+
+Correlation ID
+
+13.2 Metrics
+
+Key business metrics
+
+System metrics
+
+Naming conventions
+
+13.3 Tracing
+
+Distributed tracing strategy
+
+Trace propagation format
+
+13.4 Monitoring & Alerts
+
+Threshold definitions
+
+Escalation policy
+
+1️⃣4️⃣ Testing Strategy
+14.1 Unit Testing
+
+Coverage requirement
+
+14.2 Integration Testing
+
+Contract tests
+
+DB integration tests
+
+14.3 Backward Compatibility Tests
+
+API contract tests
+
+Event schema validation
+
+Migration validation
+
+14.4 Load Testing
+
+Methodology
+
+Target thresholds
+
+1️⃣5️⃣ Versioning & Compatibility Policy
+15.1 Semantic Versioning Rules
+
+What constitutes breaking change?
+
+15.2 API Versioning
+
+URL versioning / Header versioning
+
+15.3 Data Migration Policy
+
+Allowed schema changes
+
+Disallowed changes
+
+15.4 Deprecation Timeline
+
+Support window
+
+Migration communication plan
+
+1️⃣6️⃣ Constraints & Assumptions
+
+Regulatory requirements
+
+Budget limits
+
+Team size
+
+Timeline
+
+Technology restrictions
+
+🧠 The 7 Core Boundaries This Document Defines
+
+This master document protects:
+
+Interface Boundary
+
+Data Boundary
+
+Behavioral Boundary
+
+Security Boundary
+
+Operational Boundary
+
+Infrastructure Boundary
+
+Versioning Boundary
+
+If these are preserved, the system can be safely rewritten or regenerated.
 
 `;
