@@ -3,7 +3,10 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 
 export default {
-  packagerConfig: {},
+  packagerConfig: {
+    asar: true,
+    asarUnpack: '**/node_modules/@anthropic-ai/**',
+  },
   rebuildConfig: {},
   makers: [
     {

@@ -143,6 +143,36 @@ body {
   filter: brightness(0.9);
 }
 
+.toolbar .settings-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar .settings-btn:hover {
+  background: var(--tab-hover);
+  border-color: var(--accent-color);
+}
+
+.toolbar .settings-btn:active {
+  filter: brightness(0.9);
+}
+
+.toolbar .settings-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
 /* Tab Bar Styles */
 .tab-bar {
   height: var(--tab-height);
@@ -855,6 +885,28 @@ body {
 
 .terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-track {
   background: var(--bg-primary);
+}
+
+/* GitHub Import Terminal in Modal */
+.github-import-terminal-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+
+.github-import-terminal-container .terminal-header {
+  border-top: none;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.github-import-terminal-container .terminal-xterm {
+  height: 360px;
+  overflow: hidden;
+  position: relative;
 }
 
 .terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-thumb {

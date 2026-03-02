@@ -58,6 +58,28 @@ const electronAPI = {
     ipcRenderer.once(`terminal:exit-${sessionId}`, listener);
     return () => ipcRenderer.removeListener(`terminal:exit-${sessionId}`, listener);
   },
+
+  // GitHub repository import
+  importGithubRepo: (repoUrl: string, summarizeSpecs: string): Promise<{ success: boolean; repoPath?: string; instructionsPath?: string; output?: string; error?: string }> =>
+    ipcRenderer.invoke('github:clone-and-process', repoUrl, summarizeSpecs),
+
+  // Listen for GitHub import progress
+  onGithubProgress: (callback: (message: string) => void): (() => void) => {
+    const listener = (_event: any, message: string) => callback(message);
+    ipcRenderer.on('github:progress', listener);
+    return () => ipcRenderer.removeListener('github:progress', listener);
+  },
+
+  // Configuration APIs
+  loadConfig: (): Promise<{ apiKey: string; baseUrl: string }> =>
+    ipcRenderer.invoke('config:load'),
+
+  saveConfig: (config: { apiKey: string; baseUrl: string }): Promise<void> =>
+    ipcRenderer.invoke('config:save', config),
+
+  // Read file content
+  readFile: (filePath: string): Promise<{ success: boolean; content?: string; error?: string }> =>
+    ipcRenderer.invoke('fs:readFile', filePath),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

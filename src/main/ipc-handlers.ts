@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain } from 'electron';
 import * as pty from 'node-pty';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -15,8 +15,28 @@ export interface Metadata {
   nextIndex: number;
 }
 
+export interface AppConfig {
+  apiKey: string;
+  baseUrl: string;
+}
+
 const EDITORS_DIR = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'editors');
 const METADATA_FILE = path.join(EDITORS_DIR, 'metadata.json');
+const CONFIG_DIR = path.join(os.homedir(), 'Documents', 'OnlySpecs');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+
+const DEFAULT_CONFIG: AppConfig = {
+  apiKey: '',
+  baseUrl: 'https://api.anthropic.com',
+};
+
+async function ensureConfigDir() {
+  try {
+    await fs.mkdir(CONFIG_DIR, { recursive: true });
+  } catch (error) {
+    console.error('Failed to create config directory:', error);
+  }
+}
 
 async function ensureEditorsDir() {
   try {
@@ -42,6 +62,32 @@ async function getMetadata(): Promise<Metadata> {
 async function saveMetadata(metadata: Metadata): Promise<void> {
   await ensureEditorsDir();
   await fs.writeFile(METADATA_FILE, JSON.stringify(metadata, null, 2));
+}
+
+async function getConfig(): Promise<AppConfig> {
+
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.NODE_OPTIONS;
+  delete cleanEnv.VSCODE_INSPECTOR_OPTIONS;
+
+  // add the cleanEnv to env attribute so that any child processes spawned by the SDK will have the correct environment variables
+  await ensureConfigDir();
+  try {
+    const content = await fs.readFile(CONFIG_FILE, 'utf-8');
+    const parsed = JSON.parse(content);
+    let result =  { ...DEFAULT_CONFIG, ...parsed };
+    //result.env = cleanEnv;
+    return result;
+  } catch {
+    // Create default config if doesn't exist
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
+    return { ...DEFAULT_CONFIG };
+  }
+}
+
+async function saveConfig(config: AppConfig): Promise<void> {
+  await ensureConfigDir();
+  await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
 export function registerIpcHandlers() {
@@ -213,5 +259,179 @@ export function registerIpcHandlers() {
       ptyProcess.kill();
     }
     ptySessions.clear();
+  });
+
+  // Clone GitHub repository and prepare for analysis
+  ipcMain.handle('github:clone-and-process', async (event, repoUrl: string, summarizeSpecs: string): Promise<{ success: boolean; repoPath?: string; instructionsPath?: string; output?: string; error?: string }> => {
+    const { spawn } = require('child_process');
+    const { execSync } = require('child_process');
+    const path = require('path');
+    const os = require('os');
+    const fs = require('fs/promises');
+
+    // Helper function to send progress updates
+    const sendProgress = (message: string) => {
+      console.log('[GitHub Import]', message);
+      if (event && event.sender) {
+        try {
+          event.sender.send('github:progress', message);
+        } catch (err) {
+          console.error('[GitHub Import] Failed to send progress:', err);
+        }
+      }
+    };
+
+    // Helper function to send error
+    const sendError = (message: string) => {
+      console.error('[GitHub Import]', message);
+      sendProgress('Error: ' + message);
+    };
+
+    try {
+      // Validate inputs
+      if (!repoUrl || typeof repoUrl !== 'string') {
+        throw new Error('Invalid repository URL');
+      }
+
+      if (!summarizeSpecs || typeof summarizeSpecs !== 'string') {
+        throw new Error('Invalid summarize specs');
+      }
+
+      // Check if git is available
+      sendProgress('Checking for git...');
+      try {
+        execSync('git --version', { encoding: 'utf8' });
+      } catch (err) {
+        throw new Error('Git is not installed or not accessible. Please ensure git is installed and available in your PATH.');
+      }
+
+      // Check if claude is available
+      sendProgress('Checking for Claude CLI...');
+      try {
+        execSync('claude --version', { encoding: 'utf8' });
+      } catch (err) {
+        throw new Error('Claude CLI is not installed or not accessible. Please ensure Claude CLI is installed and available in your PATH.');
+      }
+
+      // Create temporary directory in user's home under OnlySpecs/tmp
+      sendProgress('Creating temporary directory...');
+      const baseTempDir = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'tmp');
+      await fs.mkdir(baseTempDir, { recursive: true });
+      const tempDir = path.join(baseTempDir, `onlyspecs-${Date.now()}`);
+      await fs.mkdir(tempDir, { recursive: true });
+      console.log('[GitHub Import] Temp dir created:', tempDir);
+
+      // Extract repo name from URL (handle various GitHub URL formats)
+      let repoName = repoUrl.split('/').pop()?.replace('.git', '') || 'repo';
+      if (!repoName) {
+        throw new Error('Could not extract repository name from URL');
+      }
+
+      // Clone the repository
+      sendProgress('Cloning repository from GitHub...');
+      console.log(`[GitHub Import] Cloning ${repoUrl} into ${tempDir}...`);
+
+      await new Promise<void>((resolve, reject) => {
+        const cloneProcess = spawn('git', ['clone', repoUrl, repoName], {
+          cwd: tempDir,
+          env: { ...process.env },
+          shell: false,
+        });
+
+        let cloneError = '';
+        cloneProcess.stderr?.on('data', (data) => {
+          const msg = data.toString();
+          cloneError += msg;
+          console.log('[Git Clone stderr]', msg);
+          // Send to progress log - git clone outputs to stderr
+          const trimmedMsg = msg.trim();
+          if (trimmedMsg && !trimmedMsg.includes('Done')) {
+            sendProgress(`Git: ${trimmedMsg}`);
+          }
+        });
+
+        cloneProcess.stdout?.on('data', (data) => {
+          const msg = data.toString();
+          console.log('[Git Clone stdout]', msg);
+          // Send to progress log
+          const trimmedMsg = msg.trim();
+          if (trimmedMsg) {
+            sendProgress(`Git: ${trimmedMsg}`);
+          }
+        });
+
+        cloneProcess.on('close', (code) => {
+          console.log(`[Git Clone] Process exited with code ${code}`);
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Git clone failed with exit code ${code}: ${cloneError}`));
+          }
+        });
+
+        cloneProcess.on('error', (error) => {
+          console.error('[Git Clone] Process error:', error);
+          reject(new Error(`Failed to start git process: ${error.message}`));
+        });
+      });
+
+      const repoPath = path.join(tempDir, repoName);
+      sendProgress(`Repository cloned to ${repoName}`);
+      console.log('[GitHub Import] Repo path:', repoPath);
+
+      // Verify repo was cloned
+      try {
+        await fs.access(repoPath);
+      } catch (err) {
+        throw new Error(`Repository directory not found after clone: ${repoPath}`);
+      }
+
+      // Create summarize_specs_instructions.md
+      sendProgress('Creating specification instructions...');
+      const instructionsPath = path.join(repoPath, 'summarize_specs_instructions.md');
+      await fs.writeFile(instructionsPath, summarizeSpecs, 'utf-8');
+      console.log('[GitHub Import] Instructions file created at:', instructionsPath);
+
+      sendProgress('Repository ready for analysis!');
+      sendProgress(`Working directory: ${repoPath}`);
+
+      // Return success with the working directory path
+      // The renderer will create a terminal and run claude CLI
+      return {
+        success: true,
+        repoPath: repoPath,
+        instructionsPath: instructionsPath,
+      };
+
+    } catch (error: any) {
+      console.error('[GitHub Import] Exception:', error);
+      sendError(error.message || 'Unknown error occurred');
+
+      return {
+        success: false,
+        error: error.message || 'Unknown error occurred',
+      };
+    }
+  });
+
+  // Load app configuration
+  ipcMain.handle('config:load', async (): Promise<AppConfig> => {
+    return await getConfig();
+  });
+
+  // Save app configuration
+  ipcMain.handle('config:save', async (_event, config: AppConfig): Promise<void> => {
+    await saveConfig(config);
+  });
+
+  // Read file content
+  ipcMain.handle('fs:readFile', async (_event, filePath: string): Promise<{ success: boolean; content?: string; error?: string }> => {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { success: true, content };
+    } catch (error: any) {
+      console.error('[FS] Error reading file:', error);
+      return { success: false, error: error.message || 'Failed to read file' };
+    }
   });
 }

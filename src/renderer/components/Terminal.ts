@@ -56,7 +56,7 @@ export class Terminal {
   private xterm: XTerminal;
   private fitAddon: FitAddon;
   private webLinksAddon: WebLinksAddon;
-  private sessionId: string;
+  public sessionId: string;
   private isDisposed = false;
   private unsubscribeData?: () => void;
   private unsubscribeExit?: () => void;

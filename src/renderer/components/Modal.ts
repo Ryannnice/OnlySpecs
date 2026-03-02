@@ -6,6 +6,7 @@ export interface ModalOptions {
   confirmText?: string;
   cancelText?: string;
   width?: string;
+  closeOnConfirm?: boolean; // New option to control if modal closes on confirm
 }
 
 export class Modal {
@@ -71,9 +72,12 @@ export class Modal {
         const confirmBtn = document.createElement('button');
         confirmBtn.className = 'modal-btn modal-btn-confirm';
         confirmBtn.textContent = options.confirmText || 'OK';
-        confirmBtn.addEventListener('click', () => {
-          if (options.onConfirm) options.onConfirm();
-          this.close();
+        confirmBtn.addEventListener('click', async () => {
+          if (options.onConfirm) await options.onConfirm();
+          // Only close if closeOnConfirm is true or not specified (default true for backward compatibility)
+          if (options.closeOnConfirm !== false) {
+            this.close();
+          }
         });
         footer.appendChild(confirmBtn);
       }
