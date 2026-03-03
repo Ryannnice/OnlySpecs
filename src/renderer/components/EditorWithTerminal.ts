@@ -198,8 +198,23 @@ export class EditorWithTerminal {
   }
 
   setTheme(theme: 'light' | 'dark'): void {
+    // Update terminal theme
     if (this.terminal) {
       this.terminal.setTheme(theme);
+    }
+
+    // Update Monaco editor theme
+    if (this.monacoInstance) {
+      this.monacoInstance.updateOptions({
+        theme: theme === 'dark' ? 'vs-dark' : 'vs'
+      });
+    }
+
+    // Update diff editor theme
+    if (this.diffEditorInstance) {
+      this.diffEditorInstance.updateOptions({
+        theme: theme === 'dark' ? 'vs-dark' : 'vs'
+      });
     }
   }
 

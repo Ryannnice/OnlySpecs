@@ -25,6 +25,7 @@ export class EditorContainer {
   private compareSelected: Set<string> = new Set();
   private compareStates: Map<string, { original: any; content: string }> = new Map();
   private stateManager: any = null;
+  private diffModels: Map<string, { original: any; modified: any }> = new Map();
 
   setStateManager(stateManager: any): void {
     this.stateManager = stateManager;
@@ -118,25 +119,76 @@ export class EditorContainer {
       // Select
       if (this.compareSelected.size < 2) {
         this.compareSelected.add(id);
-        // Save current editor state before switching to diff mode
-        const currentInstance = editorWithTerminal.getMonacoInstance();
-        if (currentInstance) {
-          const content = currentInstance.getValue();
-          this.compareStates.set(id, {
-            original: currentInstance,
-            content: content,
-          });
-        }
 
-        // If 2 selected, show diffs
+        // If 2 selected, make sure both have state saved before showing diffs
         if (this.compareSelected.size === 2) {
-          this.showDiffMode();
+          // Save state for BOTH selected editors before showing diff
+          const selectedIds = Array.from(this.compareSelected);
+          for (const editorId of selectedIds) {
+            this.saveEditorCompareState(editorId);
+          }
+
+          const [id1, id2] = selectedIds;
+          const state1 = this.compareStates.get(id1);
+          const state2 = this.compareStates.get(id2);
+
+          console.log('[Compare] Both selected, checking states...');
+          console.log('[Compare] State1 for', id1, ':', state1?.content ? 'exists with content' : 'MISSING or empty', 'content length:', state1?.content?.length || 0);
+          console.log('[Compare] State2 for', id2, ':', state2?.content ? 'exists with content' : 'MISSING or empty', 'content length:', state2?.content?.length || 0);
+
+          if (state1?.content && state2?.content) {
+            this.showDiffMode();
+          } else {
+            console.error('[Compare] Cannot show diff - missing state or content for one or both editors');
+            // Don't keep the second checkbox checked if we can't show diff
+            this.compareSelected.delete(id);
+            this.updateAllCompareStates();
+          }
         }
       }
     }
 
     // Update all checkbox states
     this.updateAllCompareStates();
+  }
+
+  private saveEditorCompareState(id: string): void {
+    const editorWithTerminal = this.editorWithTerminals.get(id);
+    if (!editorWithTerminal) {
+      console.warn('[Compare] EditorWithTerminal not found for', id);
+      return;
+    }
+
+    // Try to get content from Monaco instance first
+    const currentInstance = editorWithTerminal.getMonacoInstance();
+    let content = '';
+
+    if (currentInstance) {
+      try {
+        content = currentInstance.getValue();
+        console.log('[Compare] Got content from Monaco for', id, 'length:', content.length);
+      } catch (e) {
+        console.warn('[Compare] Failed to get content from Monaco for', id, e);
+        content = '';
+      }
+    }
+
+    // Always fallback to state manager content if Monaco didn't work
+    if (!content && this.stateManager) {
+      const editors = this.stateManager.getAllEditors();
+      const editor = editors.find((e: any) => e.id === id);
+      if (editor) {
+        content = editor.content || '';
+        console.log('[Compare] Got content from state manager for', id, 'length:', content.length);
+      }
+    }
+
+    this.compareStates.set(id, {
+      original: currentInstance,
+      content: content,
+    });
+
+    console.log('[Compare] Saved state for', id, 'content length:', content.length);
   }
 
   private updateAllCompareStates(): void {
@@ -150,6 +202,12 @@ export class EditorContainer {
   private showDiffMode(): void {
     if (this.compareSelected.size !== 2 || !this.monaco) return;
 
+    // Ensure Monaco is loaded
+    if (!this.isMonacoLoaded) {
+      console.error('[Compare] Monaco not loaded, cannot show diff');
+      return;
+    }
+
     const selectedIds = Array.from(this.compareSelected);
     const [id1, id2] = selectedIds;
     const editor1 = this.editorWithTerminals.get(id1);
@@ -162,7 +220,14 @@ export class EditorContainer {
 
     if (!state1 || !state2) return;
 
+    if (!state1.content || !state2.content) {
+      console.error('[Compare] Missing content for diff:', state1.content?.length, state2.content?.length);
+      return;
+    }
+
     const monacoTheme = this.themeManager ? this.themeManager.getMonacoTheme() : 'vs-dark';
+
+    console.log('[Compare] Creating diff editors with content lengths:', state1.content.length, state2.content.length);
 
     // Create diff editors for both
     this.createDiffEditor(id1, id2, state1.content, state2.content, false, monacoTheme);
@@ -183,36 +248,90 @@ export class EditorContainer {
     const monacoContainer = editorWithTerminal.getMonacoContainer();
     if (!monacoContainer) return;
 
-    // Clear existing content
+    // Clear existing content and dispose old instances
+    const oldInstance = editorWithTerminal.getMonacoInstance();
+    if (oldInstance) {
+      oldInstance.dispose();
+    }
+
+    const oldDiffEditor = editorWithTerminal.getDiffEditorInstance();
+    if (oldDiffEditor) {
+      oldDiffEditor.dispose();
+    }
+
+    // Dispose old models if they exist
+    const oldModels = this.diffModels.get(targetId);
+    if (oldModels) {
+      if (oldModels.original) oldModels.original.dispose();
+      if (oldModels.modified) oldModels.modified.dispose();
+    }
+
     monacoContainer.innerHTML = '';
 
-    // Create diff editor
-    const diffEditor = this.monaco.editor.createDiffEditor(monacoContainer, {
-      theme: theme,
-      automaticLayout: true,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      fontSize: 14,
-      lineNumbers: 'on',
-      wordWrap: 'on',
-      tabSize: 2,
-      readOnly: true,
-      renderSideBySide: !isInline,
-      enableSplitViewResizing: false,
-      renderOverviewRuler: true,
-      diffWordWrap: 'on',
+    console.log('[Compare] Creating diff editor with content lengths:', originalContent.length, modifiedContent.length);
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      if (!this.monaco || !monacoContainer.isConnected) {
+        console.error('[Compare] Monaco or container not ready');
+        return;
+      }
+
+      // Create models with unique URIs
+      const originalUri = this.monaco.Uri.parse(`file://${targetId}-${Date.now()}-original`);
+      const modifiedUri = this.monaco.Uri.parse(`file://${targetId}-${Date.now()}-modified`);
+
+      const originalModel = this.monaco.editor.createModel(originalContent, 'plaintext', originalUri);
+      const modifiedModel = this.monaco.editor.createModel(modifiedContent, 'plaintext', modifiedUri);
+
+      // Store models for later disposal
+      this.diffModels.set(targetId, { original: originalModel, modified: modifiedModel });
+
+      console.log('[Compare] Models created');
+
+      // Create diff editor
+      const diffEditor = this.monaco.editor.createDiffEditor(monacoContainer, {
+        theme: theme,
+        automaticLayout: true,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        lineNumbers: 'on',
+        wordWrap: 'on',
+        tabSize: 2,
+        readOnly: true,
+        renderSideBySide: !isInline,
+        enableSplitViewResizing: false,
+        renderOverviewRuler: true,
+        diffWordWrap: 'on',
+        diffAlgorithm: 'smart',
+        ignoreTrimWhitespace: false,
+        renderWhitespace: 'selection',
+        renderLineHighlight: 'all',
+        renderMarginRevertIcon: true,
+        originalEditable: false,
+        modifiedEditable: false,
+        enforceCodeAlignment: true,
+      });
+
+      // Set the model
+      diffEditor.setModel({
+        original: originalModel,
+        modified: modifiedModel,
+      });
+
+      // Force update
+      diffEditor.updateOptions({ renderSideBySide: !isInline });
+
+      console.log('[Compare] Diff editor created and model set for', targetId);
+
+      editorWithTerminal.setDiffEditorInstance(diffEditor);
+      editorWithTerminal.setOriginalEditorInstance(null);
+      // CRITICAL: Don't set monacoInstance to null! This causes the state manager
+      // to think there's no instance and try to create a new one, breaking the diff.
+      // Instead, keep the diff editor as the monacoInstance so it's tracked.
+      editorWithTerminal.setMonacoInstance(diffEditor);
     });
-
-    const originalModel = this.monaco.editor.createModel(originalContent, 'plaintext');
-    const modifiedModel = this.monaco.editor.createModel(modifiedContent, 'plaintext');
-
-    diffEditor.setModel({
-      original: originalModel,
-      modified: modifiedModel,
-    });
-
-    editorWithTerminal.setDiffEditorInstance(diffEditor);
-    editorWithTerminal.setOriginalEditorInstance(null);
   }
 
   private revertToNormalEditor(id: string): void {
@@ -227,6 +346,14 @@ export class EditorContainer {
     if (diffEditor) {
       diffEditor.dispose();
       editorWithTerminal.setDiffEditorInstance(null);
+    }
+
+    // Dispose diff models
+    const models = this.diffModels.get(id);
+    if (models) {
+      if (models.original) models.original.dispose();
+      if (models.modified) models.modified.dispose();
+      this.diffModels.delete(id);
     }
 
     // Recreate normal editor
@@ -256,6 +383,12 @@ export class EditorContainer {
 
     editorWithTerminal.setMonacoInstance(editor);
     editorWithTerminal.setOriginalEditorInstance(editor);
+
+    // CRITICAL: Update the state manager's Monaco instance reference
+    if (this.stateManager) {
+      this.stateManager.setMonacoInstance(id, editor);
+      console.log('[Compare] Updated state manager Monaco instance for', id);
+    }
   }
 
   private createEditorElement(editor: EditorState, index: number, totalEditors: number): void {
@@ -407,10 +540,23 @@ export class EditorContainer {
     const editorWithTerminal = this.editorWithTerminals.get(id);
     if (!editorWithTerminal || !this.monaco) return null;
 
+    // Skip if already has a diff editor (in compare mode)
+    if (editorWithTerminal.getDiffEditorInstance()) {
+      console.log('[Compare] Skipping Monaco creation, diff editor exists for', id);
+      return null;
+    }
+
+    // Skip if already has a valid Monaco instance
+    if (editorWithTerminal.getMonacoInstance()) {
+      console.log('[Compare] Monaco instance already exists for', id);
+      return editorWithTerminal.getMonacoInstance();
+    }
+
     const monacoContainer = editorWithTerminal.getMonacoContainer();
     if (!monacoContainer) return null;
 
     if (monacoContainer.hasChildNodes()) {
+      console.log('[Compare] Container has children, skipping Monaco creation for', id);
       return null;
     }
 
@@ -433,6 +579,7 @@ export class EditorContainer {
     });
 
     editorWithTerminal.setMonacoInstance(editor);
+    editorWithTerminal.setOriginalEditorInstance(editor);
 
     return editor;
   }
@@ -458,6 +605,10 @@ export class EditorContainer {
         monacoContainer.innerHTML = '';
       }
     }
+  }
+
+  getEditorWithTerminal(id: string): EditorWithTerminal | undefined {
+    return this.editorWithTerminals.get(id);
   }
 
   scrollToEditor(id: string): void {

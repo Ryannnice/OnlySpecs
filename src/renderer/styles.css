@@ -19,6 +19,11 @@
   --scrollbar-thumb: #4e4e4e;
   --scrollbar-thumb-hover: #5e5e5e;
   --shadow-color: rgba(0, 0, 0, 0.5);
+
+  /* Diff editor colors (dark theme) */
+  --diff-added-bg: rgba(67, 187, 127, 0.2);
+  --diff-removed-bg: rgba(237, 100, 100, 0.2);
+  --diff-modified-bg: rgba(100, 149, 237, 0.2);
 }
 
 /* Light theme */
@@ -38,6 +43,11 @@
   --scrollbar-thumb: #c0c0c0;
   --scrollbar-thumb-hover: #a0a0a0;
   --shadow-color: rgba(0, 0, 0, 0.15);
+
+  /* Diff editor colors (light theme) */
+  --diff-added-bg: rgba(50, 160, 65, 0.2);
+  --diff-removed-bg: rgba(210, 50, 50, 0.2);
+  --diff-modified-bg: rgba(50, 100, 210, 0.2);
 }
 
 * {
@@ -557,6 +567,68 @@ body {
   width: 100%;
   position: relative;
   z-index: 10;
+  min-height: 300px;
+}
+
+/* Diff editor specific styles */
+.monaco-container .monaco-diff-editor {
+  height: 100%;
+  width: 100%;
+  min-height: 300px;
+}
+
+.monaco-container .monaco-diff-editor .editor-container {
+  height: 100%;
+  min-height: 300px;
+}
+
+.monaco-container .monaco-diff-editor .editor-instance {
+  height: 100%;
+  min-height: 300px;
+}
+
+/* Ensure Monaco diff editor layout is computed */
+.monaco-container .monaco-diff-editor .monaco-scrollable-element {
+  height: 100% !important;
+}
+
+.monaco-container .monaco-diff-editor .monaco-editor .overflow-guard {
+  height: 100% !important;
+}
+
+/* Ensure diff decorations are visible */
+.monaco-container .monaco-diff-editor .diff-added {
+  background-color: var(--diff-added-bg, rgba(67, 187, 127, 0.2));
+}
+
+.monaco-container .monaco-diff-editor .diff-removed {
+  background-color: var(--diff-removed-bg, rgba(237, 100, 100, 0.2));
+}
+
+.monaco-container .monaco-diff-editor .diff-modified {
+  background-color: var(--diff-modified-bg, rgba(100, 149, 237, 0.2));
+}
+
+/* Ensure line decorations are visible */
+.monaco-container .monaco-diff-editor .line-insert {
+  background-color: var(--diff-added-bg, rgba(67, 187, 127, 0.2));
+}
+
+.monaco-container .monaco-diff-editor .line-delete {
+  background-color: var(--diff-removed-bg, rgba(237, 100, 100, 0.2));
+}
+
+.monaco-container .monaco-diff-editor .char-insert {
+  background-color: var(--diff-added-bg, rgba(67, 187, 127, 0.4));
+}
+
+.monaco-container .monaco-diff-editor .char-delete {
+  background-color: var(--diff-removed-bg, rgba(237, 100, 100, 0.4));
+}
+
+/* Ensure diff overview ruler is visible */
+.monaco-container .monaco-diff-editor .diff-overview-ruler {
+  width: 5px;
 }
 
 .monaco-container > * {

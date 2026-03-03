@@ -151,6 +151,14 @@ class App {
 
   private manageMonacoInstances(editors: EditorState[]): void {
     editors.forEach((editor) => {
+      // Skip if the instance is a diff editor (in compare mode)
+      // Diff editors are managed separately
+      const editorWithTerminal = this.editorContainer.getEditorWithTerminal(editor.id);
+      if (editorWithTerminal && editorWithTerminal.getDiffEditorInstance()) {
+        console.log('[App] Skipping Monaco management for diff editor:', editor.id);
+        return;
+      }
+
       // Create Monaco instance for all editors (not just visible ones)
       // Monaco is efficient enough with automaticLayout to handle 100+ instances
       if (!editor.monacoInstance) {
@@ -165,7 +173,7 @@ class App {
           this.stateManager.setMonacoInstance(editor.id, monacoInstance);
         }
       } else {
-        // Update content if needed
+        // Update content if needed - but NOT for diff editors
         const currentContent = editor.monacoInstance.getValue();
         if (currentContent !== editor.content) {
           // Content changed externally, update editor
