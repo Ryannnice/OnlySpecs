@@ -23,8 +23,13 @@ export class EditorContainer {
   private startWidth: number = 0;
   private editorOrder: string[] = [];
   private compareSelected: Set<string> = new Set();
+  private previewSelected: Set<string> = new Set();
   private compareStates: Map<string, { original: any; content: string }> = new Map();
   private stateManager: any = null;
+  private onPreviewToggle: (id: string) => void = (id: string) => {
+    // Default implementation - will be overridden
+    console.log('[Preview] Toggle preview for', id);
+  };
   private diffModels: Map<string, { original: any; modified: any }> = new Map();
 
   setStateManager(stateManager: any): void {
@@ -191,11 +196,48 @@ export class EditorContainer {
     console.log('[Compare] Saved state for', id, 'content length:', content.length);
   }
 
+  private handlePreviewToggle(id: string): void {
+    const editorWithTerminal = this.editorWithTerminals.get(id);
+    if (!editorWithTerminal) return;
+
+    const isChecked = this.previewSelected.has(id);
+
+    if (isChecked) {
+      // Unchecking preview - remove from preview set
+      this.previewSelected.delete(id);
+    } else {
+      // Checking preview - add to preview set
+      this.previewSelected.add(id);
+
+      // When enabling preview, remove from compare mode
+      if (this.compareSelected.has(id)) {
+        this.compareSelected.delete(id);
+
+        // If we had 2 selected and we're removing one, we need to exit diff mode for both
+        if (this.compareSelected.size === 1) {
+          // Get the remaining selected editor
+          const remainingId = Array.from(this.compareSelected)[0];
+          this.revertToNormalEditor(remainingId);
+        }
+
+        this.revertToNormalEditor(id);
+      }
+    }
+
+    // Update all states
+    this.updateAllCompareStates();
+  }
+
   private updateAllCompareStates(): void {
     this.editorWithTerminals.forEach((editorWithTerminal, id) => {
       const isSelected = this.compareSelected.has(id);
-      const isDisabled = this.compareSelected.size >= 2 && !isSelected;
+      const isPreviewActive = this.previewSelected.has(id);
+
+      // Disable compare if preview is active or if 2 already selected
+      const isDisabled = isPreviewActive || (this.compareSelected.size >= 2 && !isSelected);
+
       editorWithTerminal.updateCompareState(isDisabled, isSelected);
+      editorWithTerminal.updatePreviewState(this.previewSelected.has(id));
     });
   }
 
@@ -405,8 +447,10 @@ export class EditorContainer {
 
     // Check if this editor is selected for compare
     const isSelected = this.compareSelected.has(editor.id);
-    // Disable if 2 already selected and this one isn't selected
-    const isDisabled = this.compareSelected.size >= 2 && !isSelected;
+    const isPreviewSelected = this.previewSelected.has(editor.id);
+
+    // Disable compare if preview is active or if 2 already selected and this one isn't selected
+    const isCompareDisabled = isPreviewSelected || (this.compareSelected.size >= 2 && !isSelected);
 
     // Create EditorWithTerminal component
     const editorWithTerminal = new EditorWithTerminal(
@@ -416,9 +460,11 @@ export class EditorContainer {
       {
         onContentChange: this.onContentChange,
         onCompareToggle: (id) => this.handleCompareToggle(id),
+        onPreviewToggle: (id) => this.handlePreviewToggle(id),
         themeManager: this.themeManager,
-        isCompareDisabled: isDisabled,
+        isCompareDisabled: isCompareDisabled,
         isCompareSelected: isSelected,
+        isPreviewSelected: isPreviewSelected,
       }
     );
 

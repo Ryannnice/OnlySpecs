@@ -215,6 +215,12 @@ class App {
 
   private handleContentChange(id: string, content: string): void {
     this.stateManager.updateEditorContent(id, content);
+
+    // Update preview if this editor is in preview mode
+    const editorWithTerminal = this.editorContainer.getEditorWithTerminal(id);
+    if (editorWithTerminal) {
+      editorWithTerminal.updatePreviewContent();
+    }
   }
 
   private handleToggleTheme(): void {

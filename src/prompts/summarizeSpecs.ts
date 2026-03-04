@@ -1,88 +1,148 @@
 export const summarizeSpecs = `
 
-Please read the repository at this directory. It's a software project. Your role is to analyze the project and summarize the specifications of the project. The specifications should be in a markdown format.
+🧠 MASTER ARCHITECTURE ANALYSIS & DESIGN PROMPT
 
-The target of the specifications is to provide a VERY VERY detailed and informative description of the project, including its features, functionalities, and requirements. The specifications should be comprehensive and cover all aspects of the project, such as user interface, project management, and any other relevant components. 
+You are an expert systems architect, distributed systems engineer, and software design researcher.
 
-You need to create a file called "output_specs.md" in the root directory of the project, and write the specifications in that file. 
+Your task is to produce a complete, deeply reasoned, and formally structured architectural specification of a software system.
 
-User will use the specifications version v1 to understand the project and its requirements, modify the project, and do code implementation or code refactoring in version v2. So please follow the instructions below to write the specifications:
+Your output must not be superficial. You must reason through the system layer by layer and explicitly describe boundaries, modules, communication flows, design rationale, trade-offs, and invariants.
 
-📘 MASTER SOFTWARE SPECIFICATION DOCUMENT
+Do not summarize. Do not generalize. Fully expand each section.
 
-(System Definition & Boundary Contract Document)
+The final output must define the system so precisely that another engineering team could implement it without ambiguity.
 
-1️⃣ Executive Overview
-1.1 System Purpose
+1. SYSTEM BOUNDARY AND CONTEXT ANALYSIS
 
-What problem does the system solve?
+Begin by defining:
 
-Who are the primary users?
+The system’s purpose and objectives.
 
-What business goals does it support?
+The ecosystem in which it operates.
 
-What is explicitly out of scope?
+All external actors (users, systems, services).
 
-1.2 System Context
+All upstream and downstream dependencies.
 
-Where does this system sit in the ecosystem?
+What is explicitly inside the system boundary.
 
-What external systems interact with it?
+What is explicitly outside the system boundary.
 
-What are upstream and downstream dependencies?
+Data that crosses the boundary and in which direction.
 
-1.3 System Boundary Definition (CRITICAL)
+Trust boundaries and security boundaries.
 
-Clearly define:
+Clarify ownership and responsibility at each boundary.
 
-What is inside this system
+2. OVERALL ARCHITECTURE DESIGN
 
-What is outside
+Describe the global architecture:
 
-What data crosses boundaries
+Architecture style (monolith, modular monolith, microservices, event-driven, hybrid).
 
-Who owns which responsibility
+Justification for the chosen style.
 
-This prevents architectural drift.
+High-level structural diagram description (in text).
 
-2️⃣ Overall Functional Specification
-2.1 Core Capabilities
+Runtime topology (nodes, services, containers).
 
-List major features grouped by domain.
+Scalability model.
 
-2.2 Use Cases
+Fault tolerance strategy.
 
-For each use case:
+Deployment model.
 
-Actor
+Multi-region considerations if applicable.
 
-Preconditions
+Explain architectural trade-offs and alternatives considered.
 
-Main flow
+3. COMPLETE MODULE BREAKDOWN
 
-Alternative flows
+Identify ALL modules and subsystems. No implicit components.
 
-Failure cases
+For each module:
 
-Postconditions
+Name
 
-2.3 User Roles
+Responsibility
 
-Role definitions
+Scope
 
-Capabilities
+What it owns (data, logic, state)
 
-Access scope
+What it does NOT own
 
-3️⃣ Overall Behavioral Design
+Public interface
 
-This defines semantic compatibility.
+Internal interface
 
-3.1 Domain Model
+Inputs
+
+Outputs
+
+Data transformations performed
+
+State management approach
+
+Persistence strategy
+
+Error handling behavior
+
+Concurrency model
+
+Security model within the module
+
+Performance constraints
+
+Explain why this module exists and why it is separated.
+
+If services are used, describe service boundaries explicitly.
+
+4. INTER-MODULE RELATIONSHIPS AND COMMUNICATION
+
+For every pair of interacting modules, describe:
+
+Direction of communication
+
+Protocol (HTTP, gRPC, message queue, shared DB, etc.)
+
+Sync vs async
+
+Data schema exchanged
+
+Retry strategy
+
+Timeout policy
+
+Failure propagation behavior
+
+Circuit breaking
+
+Idempotency expectations
+
+Transaction boundaries
+
+Ordering guarantees
+
+Consistency guarantees
+
+Describe full communication flow for:
+
+Normal execution path
+
+Failure scenarios
+
+Retry scenarios
+
+Partial system outages
+
+Explain why this communication model was chosen.
+
+5. DOMAIN MODEL AND BEHAVIOR DESIGN
 
 Define:
 
-Entities
+Core entities
 
 Value objects
 
@@ -90,109 +150,69 @@ Aggregates
 
 Relationships
 
+Ownership rules
+
 Invariants
 
-3.2 State Machines
+State machines for key entities
 
-For each major entity:
+Allowed and forbidden transitions
 
-States
-
-Valid transitions
-
-Transition triggers
-
-Illegal transitions
-
-Timeout behavior
-
-3.3 Business Rules
-
-Define explicitly:
+Business rules
 
 Validation rules
 
-Calculation formulas
+Derived data rules
 
 Side effects
 
-Idempotency rules
+Event triggers
 
-Ordering guarantees
+Workflow orchestration logic
 
-Consistency expectations
+Describe how domain logic is protected from infrastructure leakage.
 
-3.4 Workflow & Orchestration
+Explain consistency boundaries and transaction scoping.
 
-Sync vs async flows
+6. DATA ARCHITECTURE
 
-Background jobs
+Describe:
 
-Scheduled tasks
+Database technology and justification
 
-Event-driven flows
+Schema structure
 
-Saga / transaction coordination
+Data partitioning strategy
 
-4️⃣ Overall System Architecture
-4.1 Architecture Style
+Indexing strategy
 
-Monolith / Microservices / Modular Monolith / Event-Driven
+Migration strategy
 
-Rationale
+Backward compatibility rules
 
-4.2 Component Breakdown
+Data lifecycle management
 
-For each component:
+Archival strategy
 
-Responsibility
+Data retention policies
 
-Inputs
+Caching layers
 
-Outputs
+Cache invalidation rules
 
-Dependencies
+Read/write separation if applicable
 
-Ownership
+Explain data consistency model (strong, eventual, hybrid).
 
-4.3 Communication Model
+7. API AND CONTRACT DESIGN
 
-REST / gRPC / GraphQL
+Fully define:
 
-Messaging system
+Public API structure
 
-Sync vs async boundaries
+Endpoint grouping
 
-Retry policy
-
-Circuit breaking
-
-Timeout rules
-
-4.4 Deployment Topology
-
-Runtime units
-
-Scaling strategy
-
-Load balancing
-
-Multi-region strategy
-
-5️⃣ API & Interface Contracts
-5.1 Public APIs
-
-For each endpoint:
-
-Path
-
-Method
-
-Request schema
-
-Response schema
-
-Status codes
+Request/response schemas
 
 Error model
 
@@ -200,352 +220,188 @@ Versioning policy
 
 Deprecation policy
 
-5.2 Internal APIs
+Authentication and authorization integration
 
-Service-to-service contracts
+Rate limiting strategy
 
-Authentication between services
+If internal APIs exist, describe those separately.
 
-5.3 Event Contracts
+If events are published or consumed, describe:
 
-Topic names
+Topic naming strategy
 
 Event schema
 
-Required fields
+Schema evolution rules
 
-Ordering guarantees
+Consumer isolation guarantees
 
-Retry semantics
+8. SECURITY ARCHITECTURE
 
-5.4 Webhooks
+Define:
 
-Payload schema
+Authentication mechanism
 
-Delivery guarantee
+Token structure
 
-Signature verification
+Session model
 
-6️⃣ Data & Persistence Design
-6.1 Database Choice
+Authorization model
 
-SQL / NoSQL / Hybrid
+Role hierarchy
 
-Rationale
+Permission granularity
 
-6.2 Schema Definition
-
-Tables / collections
-
-Fields and types
-
-Nullability
-
-Constraints
-
-Indexes
-
-Enum values
-
-6.3 Migration Strategy
-
-Backward compatibility rules
-
-Zero-downtime migrations
-
-Data transformation policies
-
-6.4 Transaction Model
-
-Isolation level
-
-Cross-entity consistency rules
-
-Compensating transactions
-
-6.5 Caching Strategy
-
-What is cached?
-
-TTL
-
-Invalidation rules
-
-Cache consistency guarantees
-
-7️⃣ Storage & File Design
-
-If files are stored:
-
-Storage provider
-
-Directory structure
-
-Naming conventions
-
-Serialization format
-
-Encoding
-
-Compression
-
-Retention policy
-
-Versioning scheme
-
-8️⃣ Security & Access Control
-8.1 Authentication
-
-Mechanism (JWT, OAuth, API Key, Session)
-
-Token format
-
-Expiration rules
-
-8.2 Authorization
-
-RBAC / ABAC model
-
-Permission definitions
-
-Scope model
-
-Multi-tenant isolation rules
-
-8.3 Data Protection
-
-Encryption at rest
+Multi-tenant isolation
 
 Encryption in transit
 
+Encryption at rest
+
 Key management
 
-PII handling
+Audit logging model
 
-8.4 Audit Logging
+Threat model analysis
 
-What actions are logged?
+Describe attack surface and mitigation strategies.
 
-Log schema
+9. NON-FUNCTIONAL DESIGN
 
-Retention policy
+Detail:
 
-9️⃣ Non-Functional Requirements
-9.1 Performance
+Performance targets
 
-Expected latency
+Scalability strategy
 
-Throughput targets
+Load handling behavior
 
-Concurrency limits
+Backpressure strategy
 
-9.2 Scalability
+Resilience mechanisms
 
-Horizontal scaling rules
+Availability targets
 
-Bottleneck analysis
+Observability architecture
 
-9.3 Availability
+Logging format
 
-SLA
+Metrics model
 
-Failover design
+Tracing model
 
-Backup strategy
+Alerting model
 
-9.4 Consistency Model
+Explain bottlenecks and scaling limits.
 
-Strong / Eventual
+10. CONFIGURATION AND ENVIRONMENT DESIGN
 
-Read-after-write guarantees
+Describe:
 
-9.5 Reliability
+Environment separation
 
-Retry rules
+Configuration injection model
 
-Idempotency rules
-
-Dead-letter handling
-
-🔟 Configuration & Environment
-10.1 Environment Definition
-
-Dev / Staging / Production
-
-Config differences
-
-10.2 Environment Variables
-
-Required variables
-
-Defaults
-
-Validation rules
-
-10.3 Feature Flags
-
-Flag definitions
-
-Default states
+Feature flag architecture
 
 Rollout strategy
 
-1️⃣1️⃣ Technology Stack
-11.1 Programming Language(s)
+CI/CD pipeline structure
 
-Version
+Infrastructure as Code model
 
-Rationale
+Blue/green or canary deployment strategy
 
-11.2 Frameworks
+11. DEPENDENCY GRAPH AND TECHNOLOGY STACK
 
-Web framework
+Explicitly describe:
 
-ORM
+Programming language(s)
 
-Messaging library
+Framework(s)
 
-11.3 Infrastructure
+Library dependencies
 
-Cloud provider
-
-Containerization
-
-Orchestration
-
-CI/CD pipeline
-
-11.4 Third-Party Dependencies
-
-For each:
-
-Purpose
+External services
 
 Version constraints
 
-Replacement strategy
+Upgrade strategy
 
-1️⃣2️⃣ Dependency Graph
+Breaking change policy
 
-Internal module dependencies
+Map internal dependency graph and layering rules.
 
-External service dependencies
+12. FAILURE ANALYSIS
 
-Database dependencies
+For each critical component:
 
-Version compatibility requirements
+Single point of failure analysis
 
-Include:
+Failure cascade analysis
 
-Upgrade policy
+Partial degradation mode
 
-Breaking-change detection policy
+Disaster recovery plan
 
-1️⃣3️⃣ Observability & Operations
-13.1 Logging
+Backup and restore model
 
-Log format
+Explain recovery time objectives and recovery point objectives.
 
-Required fields
+13. VERSIONING AND EVOLUTION STRATEGY
 
-Correlation ID
+Describe:
 
-13.2 Metrics
+Semantic versioning policy
 
-Key business metrics
+API evolution strategy
 
-System metrics
+Database migration governance
 
-Naming conventions
+Backward compatibility validation method
 
-13.3 Tracing
+Contract testing model
 
-Distributed tracing strategy
+Deprecation timelines
 
-Trace propagation format
+Explain how compatibility is enforced.
 
-13.4 Monitoring & Alerts
+14. FORMAL CONSISTENCY AND INVARIANTS
 
-Threshold definitions
+Explicitly list:
 
-Escalation policy
+System-wide invariants
 
-1️⃣4️⃣ Testing Strategy
-14.1 Unit Testing
+Data invariants
 
-Coverage requirement
+Transaction invariants
 
-14.2 Integration Testing
+Security invariants
 
-Contract tests
+Operational invariants
 
-DB integration tests
+Explain how each invariant is enforced and verified.
 
-14.3 Backward Compatibility Tests
+OUTPUT REQUIREMENTS
 
-API contract tests
+Use structured sections with clear headings.
 
-Event schema validation
+No bullet-point-only answers — explain reasoning.
 
-Migration validation
+Explicitly justify design decisions.
 
-14.4 Load Testing
+Explicitly describe communication paths.
 
-Methodology
+Explicitly describe module boundaries.
 
-Target thresholds
+Include failure reasoning.
 
-1️⃣5️⃣ Versioning & Compatibility Policy
-15.1 Semantic Versioning Rules
+Include scaling reasoning.
 
-What constitutes breaking change?
+Include security reasoning.
 
-15.2 API Versioning
+Include evolution reasoning.
 
-URL versioning / Header versioning
-
-15.3 Data Migration Policy
-
-Allowed schema changes
-
-Disallowed changes
-
-15.4 Deprecation Timeline
-
-Support window
-
-Migration communication plan
-
-1️⃣6️⃣ Constraints & Assumptions
-
-Regulatory requirements
-
-Budget limits
-
-Team size
-
-Timeline
-
-Technology restrictions
-
-🧠 The 7 Core Boundaries This Document Defines
-
-This master document protects:
-
-Interface Boundary
-
-Data Boundary
-
-Behavioral Boundary
-
-Security Boundary
-
-Operational Boundary
-
-Infrastructure Boundary
-
-Versioning Boundary
-
-If these are preserved, the system can be safely rewritten or regenerated.
+Your output must be architecturally complete and internally consistent.
 
 `;

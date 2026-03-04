@@ -470,6 +470,100 @@ body {
   cursor: not-allowed;
 }
 
+.preview-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid var(--accent-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.preview-checkbox:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-hover);
+}
+
+.preview-checkbox:checked {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.preview-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.preview-checkbox-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Editor and Preview side-by-side wrapper */
+.editor-preview-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-preview-wrapper .preview-section {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.preview-resize-handle {
+  width: 4px;
+  background: var(--border-color);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 10;
+}
+
+.preview-resize-handle:hover {
+  background: var(--accent-color);
+}
+
+.preview-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 32px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.preview-resize-handle:hover::after {
+  opacity: 1;
+}
+
+.editor-preview-wrapper .editor-section {
+  min-width: 0;
+}
+
 .editor-section {
   flex: 1;
   min-height: 0;
@@ -989,6 +1083,127 @@ body {
 
 .terminal-xterm .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+
+/* Preview Section */
+.preview-section {
+  display: block; /* Ensure block layout for proper vertical flow */
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.preview-section h1,
+.preview-section h2,
+.preview-section h3,
+.preview-section h4,
+.preview-section h5,
+.preview-section h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.preview-section h1 {
+  font-size: 2em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.preview-section h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.preview-section h3 {
+  font-size: 1.25em;
+}
+
+.preview-section p {
+  margin-bottom: 16px;
+}
+
+.preview-section a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+
+.preview-section a:hover {
+  text-decoration: underline;
+}
+
+.preview-section ul,
+.preview-section ol {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.preview-section li {
+  margin-bottom: 4px;
+}
+
+.preview-section code {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+}
+
+.preview-section pre {
+  background: var(--bg-secondary);
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.preview-section pre code {
+  background: none;
+  padding: 0;
+}
+
+.preview-section blockquote {
+  border-left: 4px solid var(--border-color);
+  padding-left: 16px;
+  margin-left: 0;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+}
+
+.preview-section table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.preview-section table th,
+.preview-section table td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.preview-section table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.preview-section img {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-section hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 24px 0;
 }
 
 
