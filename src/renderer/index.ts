@@ -414,7 +414,7 @@ class App {
     editorWithTerminal.setCwd(this.projectRoot);
 
     // Build the command (cwd is set via setCwd, so no need for cd)
-    const command = `claude --dangerously-skip-permissions -p "Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, then save the code in the ${codeFolderName}. Do not leave any blank and implement all codes, test, docs and readme. Do not ask any questions to user. Do the task in headless mode. If any decisions need to be made, make them autonomously and DO NOT ASK USER. When the task is done, exit immediately."`;
+    const command = `claude --dangerously-skip-permissions -p "Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. Do not ask any questions to user. Do the task in headless mode. If any decisions need to be made, make them autonomously and DO NOT ASK USER. When the task is done, exit immediately."`;
 
     console.log('[App] Running command:', command);
 
@@ -957,7 +957,7 @@ class App {
         // Wait a bit for terminal to initialize, then send commands
         setTimeout(async () => {
           // CD to the repo directory and run claude, then exit automatically
-          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. Do the task in headless mode. When the task is done, exit immediately." && exit\r`;
+          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately." && exit\r`;
           if (window.electronAPI) {
             await window.electronAPI.writeTerminal(this.githubImportTerminal!.sessionId, commands);
           }
