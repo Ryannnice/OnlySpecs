@@ -4,6 +4,7 @@ export interface EditorState {
   id: string;
   name: string;
   content: string;
+  filePath?: string;
   monacoInstance?: any;
   isDirty: boolean;
   domElement?: HTMLElement;
@@ -77,6 +78,7 @@ export class EditorStateManager {
       id,
       name: editorName,
       content: '',
+      filePath: undefined,
       isDirty: true,
     };
 
@@ -87,6 +89,29 @@ export class EditorStateManager {
     // Auto-save new editor
     this.scheduleAutoSave(id);
 
+    return newEditor;
+  }
+
+  async openFileEditor(filePath: string, name: string, content: string): Promise<EditorState> {
+    const existing = this.editors.find((e) => e.filePath === filePath);
+    if (existing) {
+      if (existing.content !== content) {
+        existing.content = content;
+      }
+      this.notifyListeners();
+      return existing;
+    }
+
+    const newEditor: EditorState = {
+      id: this.generateId(),
+      name,
+      content,
+      filePath,
+      isDirty: false,
+    };
+
+    this.editors.unshift(newEditor);
+    this.notifyListeners();
     return newEditor;
   }
 
@@ -205,10 +230,21 @@ export class EditorStateManager {
     if (!editor || !editor.isDirty) return;
 
     try {
+      if (editor.filePath) {
+        const result = await window.electronAPI.writeFile(editor.filePath, editor.content);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save file');
+        }
+        editor.isDirty = false;
+        this.notifyListeners();
+        return;
+      }
+
       await window.electronAPI.saveEditor({
         id: editor.id,
         name: editor.name,
         content: editor.content,
+        filePath: editor.filePath,
       });
       editor.isDirty = false;
       this.notifyListeners();
@@ -220,10 +256,21 @@ export class EditorStateManager {
   // Save all editors
   async saveAllEditors(): Promise<void> {
     try {
+      for (const editor of this.editors) {
+        if (editor.filePath && editor.isDirty) {
+          const result = await window.electronAPI.writeFile(editor.filePath, editor.content);
+          if (!result.success) {
+            throw new Error(result.error || `Failed to save ${editor.name}`);
+          }
+          editor.isDirty = false;
+        }
+      }
+
       const editorsToSave = this.editors.map(e => ({
         id: e.id,
         name: e.name,
         content: e.content,
+        filePath: e.filePath,
       }));
       await window.electronAPI.saveAllEditors(editorsToSave);
       this.editors.forEach(e => e.isDirty = false);
@@ -238,6 +285,15 @@ export class EditorStateManager {
     const editor = this.editors.find(e => e.id === id);
     if (editor) {
       editor.monacoInstance = instance;
+    }
+  }
+
+  // Set file path for an editor
+  setFilePath(id: string, filePath: string): void {
+    const editor = this.editors.find(e => e.id === id);
+    if (editor) {
+      editor.filePath = filePath;
+      this.notifyListeners();
     }
   }
 

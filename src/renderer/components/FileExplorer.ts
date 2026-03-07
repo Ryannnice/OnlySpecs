@@ -8,6 +8,8 @@ export interface FileEntry {
 
 export interface FileExplorerOptions {
   onFileSelect?: (filePath: string) => void;
+  onFileDelete?: (filePath: string) => void;
+  onRootChange?: (rootPath: string) => void;
   themeManager?: any;
 }
 
@@ -17,11 +19,15 @@ export class FileExplorer {
   private currentRoot: string | null = null;
   private fileTree: FileEntry[] = [];
   private onFileSelect?: (filePath: string) => void;
+  private onFileDelete?: (filePath: string) => void;
+  private onRootChange?: (rootPath: string) => void;
 
   constructor(container: HTMLElement, options: FileExplorerOptions = {}) {
     this.container = container;
     this.options = options;
     this.onFileSelect = options.onFileSelect;
+    this.onFileDelete = options.onFileDelete;
+    this.onRootChange = options.onRootChange;
     this.render();
   }
 
@@ -71,6 +77,9 @@ export class FileExplorer {
     if (result.success && result.path) {
       this.currentRoot = result.path;
       await this.loadDirectory(result.path);
+      if (this.onRootChange) {
+        this.onRootChange(result.path);
+      }
     }
   }
 
@@ -123,6 +132,23 @@ export class FileExplorer {
     }
   }
 
+  public async loadProjectRoot(rootPath: string): Promise<void> {
+    this.currentRoot = rootPath;
+    await this.loadDirectory(rootPath);
+    if (this.onRootChange) {
+      this.onRootChange(rootPath);
+    }
+  }
+
+  public async refresh(): Promise<void> {
+    if (!this.currentRoot) return;
+    await this.loadDirectory(this.currentRoot);
+  }
+
+  public getCurrentRoot(): string | null {
+    return this.currentRoot;
+  }
+
   private renderTree(): void {
     const content = this.container.querySelector('.file-explorer-content') as HTMLElement;
     if (!content) return;
@@ -149,6 +175,10 @@ export class FileExplorer {
     return entries.map(entry => this.renderEntry(entry, depth)).join('');
   }
 
+  private isSpecsFile(name: string): boolean {
+    return /^specs_v\d+\.md$/i.test(name);
+  }
+
   private renderEntry(entry: FileEntry, depth: number): string {
     const indent = depth * 16;
     const icon = entry.isDirectory
@@ -165,6 +195,18 @@ export class FileExplorer {
         </svg>`
       : '<span class="chevron-placeholder"></span>';
 
+    // Add delete icon for specs files
+    const deleteIcon = !entry.isDirectory && this.isSpecsFile(entry.name)
+      ? `<button class="file-delete-btn" title="Delete file" data-path="${this.escapeHtml(entry.path)}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"/>
+            <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>`
+      : '';
+
     const children = entry.isDirectory && entry.expanded && entry.children
       ? `<ul class="nested-children">${this.renderEntries(entry.children, depth + 1)}</ul>`
       : '';
@@ -175,6 +217,7 @@ export class FileExplorer {
           <span class="file-tree-toggle">${chevron}</span>
           <span class="file-tree-icon">${icon}</span>
           <span class="file-tree-name">${this.escapeHtml(entry.name)}</span>
+          ${deleteIcon}
         </div>
         ${children}
       </li>
@@ -218,11 +261,60 @@ export class FileExplorer {
         container.querySelectorAll('.file-tree-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
 
-        if (path && !isDirectory && this.onFileSelect) {
+        if (!path) return;
+
+        if (isDirectory) {
+          const entry = this.findEntry(this.fileTree, path);
+          if (entry) {
+            if (entry.expanded) {
+              this.collapseDirectory(entry);
+            } else {
+              this.expandDirectory(entry);
+            }
+          }
+          return;
+        }
+
+        if (this.onFileSelect) {
           this.onFileSelect(path);
         }
       });
     });
+
+    // Delete button for specs files
+    container.querySelectorAll('.file-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const filePath = (btn as HTMLElement).dataset.path;
+        if (filePath) {
+          this.handleDeleteFile(filePath);
+        }
+      });
+    });
+  }
+
+  private async handleDeleteFile(filePath: string): Promise<void> {
+    const fileName = filePath.split('/').pop() || filePath;
+    const confirmed = confirm(`Are you sure you want to delete "${fileName}"?\n\nThis will permanently delete the file from the folder.`);
+
+    if (!confirmed) return;
+
+    if (!window.electronAPI) {
+      console.error('[FileExplorer] electronAPI not available');
+      return;
+    }
+
+    const result = await window.electronAPI.deleteFile(filePath);
+    if (result.success) {
+      // Notify parent about the deletion
+      if (this.onFileDelete) {
+        this.onFileDelete(filePath);
+      }
+      // Refresh the file tree
+      await this.refresh();
+    } else {
+      alert(`Failed to delete file: ${result.error || 'Unknown error'}`);
+    }
   }
 
   private findEntry(entries: FileEntry[], path: string): FileEntry | undefined {

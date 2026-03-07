@@ -2,6 +2,8 @@ export class Toolbar {
   private container: HTMLElement;
   private themeToggleBtn!: HTMLElement;
   private onToggleTheme: () => void;
+  private onCreateProject: () => void;
+  private onOpenProject: () => void;
   private onGetSpecs: () => void;
   private onOpenSettings: () => void;
 
@@ -9,12 +11,16 @@ export class Toolbar {
     container: HTMLElement,
     options: {
       onToggleTheme: () => void;
+      onCreateProject?: () => void;
+      onOpenProject?: () => void;
       onGetSpecs?: () => void;
       onOpenSettings?: () => void;
     }
   ) {
     this.container = container;
     this.onToggleTheme = options.onToggleTheme;
+    this.onCreateProject = options.onCreateProject || (() => {});
+    this.onOpenProject = options.onOpenProject || (() => {});
     this.onGetSpecs = options.onGetSpecs || (() => {});
     this.onOpenSettings = options.onOpenSettings || (() => {});
 
@@ -38,6 +44,10 @@ export class Toolbar {
     // Create New Project button
     const newProjectBtn = this.createNewProjectBtn();
     controls.appendChild(newProjectBtn);
+
+    // Open existing project button
+    const openProjectBtn = this.createOpenProjectBtn();
+    controls.appendChild(openProjectBtn);
 
     // Get Specs button
     const getSpecsBtn = this.createGetSpecsBtn();
@@ -69,7 +79,27 @@ export class Toolbar {
     btn.innerHTML = icon + 'Create a new project';
 
     btn.addEventListener('click', () => {
-      // TODO: Implement create new project functionality
+      this.onCreateProject();
+    });
+
+    return btn;
+  }
+
+  private createOpenProjectBtn(): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'open-project-btn';
+    btn.textContent = 'Open existing project';
+    btn.title = 'Open an existing project folder';
+
+    // Folder open icon
+    const icon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>`;
+
+    btn.innerHTML = icon + 'Open existing project';
+
+    btn.addEventListener('click', () => {
+      this.onOpenProject();
     });
 
     return btn;

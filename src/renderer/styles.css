@@ -193,6 +193,37 @@ body {
   stroke: currentColor;
 }
 
+.toolbar .open-project-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.toolbar .open-project-btn:hover {
+  background: var(--tab-hover);
+  border-color: var(--accent-color);
+}
+
+.toolbar .open-project-btn:active {
+  filter: brightness(0.9);
+}
+
+.toolbar .open-project-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
 .toolbar .settings-btn {
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -301,6 +332,10 @@ body {
 
 .tab:hover {
   background: var(--tab-hover);
+}
+
+.tab.active {
+  background: var(--tab-active);
 }
 
 .tab:active {
@@ -527,6 +562,19 @@ body {
 
 .action-btn-modify:active {
   transform: translateY(0);
+}
+
+/* Checkboxes Section */
+.checkboxes-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  min-height: 40px;
+  flex-shrink: 0;
 }
 
 .compare-checkbox {
@@ -1721,6 +1769,39 @@ body {
   min-width: 0;
 }
 
+.file-delete-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin-left: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.file-delete-btn:hover {
+  color: #f48771;
+  background: rgba(244, 135, 113, 0.1);
+}
+
+.file-tree-item:hover .file-delete-btn {
+  opacity: 1;
+}
+
+.file-tree-item.active .file-delete-btn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.file-tree-item.active .file-delete-btn:hover {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.2);
+}
+
 .nested-children {
   list-style: none;
   padding: 0;
@@ -1735,5 +1816,4 @@ body {
 .file-tree-item.active .file-icon-default {
   color: white;
 }
-
 

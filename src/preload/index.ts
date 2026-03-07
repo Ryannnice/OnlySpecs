@@ -4,6 +4,7 @@ export interface EditorData {
   id: string;
   name: string;
   content: string;
+  filePath?: string;
 }
 
 const electronAPI = {
@@ -71,15 +72,19 @@ const electronAPI = {
   },
 
   // Configuration APIs
-  loadConfig: (): Promise<{ apiKey: string; baseUrl: string }> =>
+  loadConfig: (): Promise<{ apiKey: string; baseUrl: string; lastProjectPath: string }> =>
     ipcRenderer.invoke('config:load'),
 
-  saveConfig: (config: { apiKey: string; baseUrl: string }): Promise<void> =>
+  saveConfig: (config: { apiKey: string; baseUrl: string; lastProjectPath?: string }): Promise<void> =>
     ipcRenderer.invoke('config:save', config),
 
   // Read file content
   readFile: (filePath: string): Promise<{ success: boolean; content?: string; error?: string }> =>
     ipcRenderer.invoke('fs:readFile', filePath),
+
+  // Write file content
+  writeFile: (filePath: string, content: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fs:writeFile', filePath, content),
 
   // Select directory
   selectDirectory: (): Promise<{ success: boolean; path?: string; error?: string }> =>
@@ -88,6 +93,14 @@ const electronAPI = {
   // Read directory
   readDirectory: (dirPath: string): Promise<{ success: boolean; entries?: Array<{ name: string; path: string; isDirectory: boolean }>; error?: string }> =>
     ipcRenderer.invoke('fs:readDirectory', dirPath),
+
+  // Create a new project
+  createProject: (): Promise<{ success: boolean; projectPath?: string; error?: string }> =>
+    ipcRenderer.invoke('project:create'),
+
+  // Delete file
+  deleteFile: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fs:deleteFile', filePath),
 };
 
 export interface ElectronAPIType {
@@ -107,11 +120,14 @@ export interface ElectronAPIType {
   onTerminalExit(sessionId: string, callback: (exitCode: number, signal: number) => void): () => void;
   importGithubRepo(repoUrl: string, summarizeSpecs: string): Promise<{ success: boolean; repoPath?: string; instructionsPath?: string; output?: string; error?: string }>;
   onGithubProgress(callback: (message: string) => void): () => void;
-  loadConfig(): Promise<{ apiKey: string; baseUrl: string }>;
-  saveConfig(config: { apiKey: string; baseUrl: string }): Promise<void>;
+  loadConfig(): Promise<{ apiKey: string; baseUrl: string; lastProjectPath: string }>;
+  saveConfig(config: { apiKey: string; baseUrl: string; lastProjectPath?: string }): Promise<void>;
   readFile(filePath: string): Promise<{ success: boolean; content?: string; error?: string }>;
+  writeFile(filePath: string, content: string): Promise<{ success: boolean; error?: string }>;
   selectDirectory(): Promise<{ success: boolean; path?: string; error?: string }>;
   readDirectory(dirPath: string): Promise<{ success: boolean; entries?: Array<{ name: string; path: string; isDirectory: boolean }>; error?: string }>;
+  createProject(): Promise<{ success: boolean; projectPath?: string; error?: string }>;
+  deleteFile(filePath: string): Promise<{ success: boolean; error?: string }>;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

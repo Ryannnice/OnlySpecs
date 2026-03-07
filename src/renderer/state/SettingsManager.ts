@@ -1,11 +1,13 @@
 export interface AppConfig {
   apiKey: string;
   baseUrl: string;
+  lastProjectPath: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   apiKey: '',
   baseUrl: 'https://api.anthropic.com',
+  lastProjectPath: '',
 };
 
 export class SettingsManager {
@@ -84,5 +86,13 @@ export class SettingsManager {
 
   async setBaseUrl(baseUrl: string): Promise<void> {
     await this.updateConfig({ baseUrl });
+  }
+
+  getLastProjectPath(): string {
+    return this.config.lastProjectPath;
+  }
+
+  async setLastProjectPath(path: string): Promise<void> {
+    await this.updateConfig({ lastProjectPath: path });
   }
 }

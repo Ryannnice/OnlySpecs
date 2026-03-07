@@ -2,8 +2,8 @@ import { EditorState } from '../state/EditorStateManager';
 
 export class TabBar {
   private container: HTMLElement;
-  private tabsContainer: HTMLElement;
-  private newTabBtn: HTMLElement;
+  private tabsContainer!: HTMLElement;
+  private newTabBtn!: HTMLElement;
   private onNewTab: () => void;
   private onSelectTab: (id: string) => void;
   private onCloseTab: (id: string) => void;
@@ -39,7 +39,8 @@ export class TabBar {
     // New tab button
     this.newTabBtn = document.createElement('button');
     this.newTabBtn.className = 'new-tab-btn';
-    this.newTabBtn.textContent = '+ New Tab';
+    this.newTabBtn.textContent = '+';
+    this.newTabBtn.title = 'Open next specs version';
     this.newTabBtn.addEventListener('click', () => this.onNewTab());
     this.container.appendChild(this.newTabBtn);
 
@@ -49,21 +50,24 @@ export class TabBar {
     this.container.appendChild(this.tabsContainer);
   }
 
-  renderTabs(editors: EditorState[]): void {
+  renderTabs(editors: EditorState[], activeEditorId?: string): void {
     this.tabsContainer.innerHTML = '';
 
     editors.forEach((editor, index) => {
-      const tab = this.createTab(editor, index);
+      const tab = this.createTab(editor, index, activeEditorId);
       this.tabsContainer.appendChild(tab);
     });
   }
 
-  private createTab(editor: EditorState, index: number): HTMLElement {
+  private createTab(editor: EditorState, index: number, activeEditorId?: string): HTMLElement {
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.draggable = true;
     tab.dataset.index = index.toString();
     tab.dataset.id = editor.id;
+    if (activeEditorId && activeEditorId === editor.id) {
+      tab.classList.add('active');
+    }
 
     if (index === this.dragOverIndex) {
       tab.classList.add('drag-over');

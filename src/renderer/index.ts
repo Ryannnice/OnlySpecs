@@ -27,6 +27,8 @@ class App {
   private currentModal: Modal | null = null;
   private resultsModal: Modal | null = null;
   private githubImportTerminal: Terminal | null = null;
+  private projectRoot: string | null = null;
+  private activeEditorId: string | null = null;
 
   // Summarize specs prompt
   private readonly summarizeSpecs = summarizeSpecs;
@@ -52,6 +54,14 @@ class App {
     // Initialize File Explorer
     this.fileExplorer = new FileExplorer(fileExplorerContainer, {
       onFileSelect: (filePath) => this.handleFileSelect(filePath),
+      onFileDelete: (filePath) => this.handleFileDelete(filePath),
+      onRootChange: (rootPath) => {
+        this.projectRoot = rootPath;
+        // Auto-save the project path when it changes
+        this.settingsManager.setLastProjectPath(rootPath).catch(err => {
+          console.error('[App] Failed to save project path:', err);
+        });
+      },
       themeManager: this.themeManager,
     });
 
@@ -63,6 +73,8 @@ class App {
 
     this.toolbar = new Toolbar(toolbarContainer, {
       onToggleTheme: () => this.handleToggleTheme(),
+      onCreateProject: () => this.handleCreateProject(),
+      onOpenProject: () => this.handleOpenProject(),
       onGetSpecs: () => this.handleGetSpecs(),
       onOpenSettings: () => this.handleOpenSettings(),
     });
@@ -127,8 +139,42 @@ class App {
     // Initialize settings manager and load config from file
     await this.settingsManager.initialize();
 
+    // Try to restore the last opened project
+    await this.restoreLastProject();
+
     // Initial render with loaded editors
     this.render(this.stateManager.getAllEditors());
+  }
+
+  private async restoreLastProject(): Promise<void> {
+    const lastPath = this.settingsManager.getLastProjectPath();
+    if (!lastPath || !this.fileExplorer) {
+      return;
+    }
+
+    // Check if the path still exists
+    if (!window.electronAPI) {
+      console.warn('[App] electronAPI not available for path check');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.readDirectory(lastPath);
+      if (result.success) {
+        // Path exists, load it
+        console.log('[App] Restoring last project:', lastPath);
+        await this.fileExplorer.loadProjectRoot(lastPath);
+        this.projectRoot = lastPath;
+      } else {
+        // Path doesn't exist, clear it from config
+        console.log('[App] Last project path no longer exists, clearing:', lastPath);
+        await this.settingsManager.setLastProjectPath('');
+      }
+    } catch (error) {
+      console.error('[App] Failed to restore last project:', error);
+      // Clear the invalid path
+      await this.settingsManager.setLastProjectPath('');
+    }
   }
 
   private async waitForMonaco(): Promise<void> {
@@ -160,8 +206,16 @@ class App {
   }
 
   private render(editors: EditorState[]): void {
+    if (!this.activeEditorId && editors.length > 0) {
+      this.activeEditorId = editors[0].id;
+    }
+
+    if (this.activeEditorId && !editors.some((e) => e.id === this.activeEditorId)) {
+      this.activeEditorId = editors.length > 0 ? editors[0].id : null;
+    }
+
     // Update tab bar
-    this.tabBar.renderTabs(editors);
+    this.tabBar.renderTabs(editors, this.activeEditorId || undefined);
 
     // Update editor container
     this.editorContainer.renderEditors(editors);
@@ -211,7 +265,55 @@ class App {
 
 
   private async handleNewTab(): Promise<void> {
-    const editor = await this.stateManager.createEditor();
+    // Get all current editors
+    const editors = this.stateManager.getAllEditors();
+
+    // Find the highest specs version number from all open tabs
+    let maxVersion = 0;
+    const specsPattern: RegExp = /^specs_v(\d+)\.md$/;
+
+    editors.forEach(editor => {
+      // editor.name should contain the filename
+      if (editor.name) {
+        const match = editor.name.match(specsPattern);
+        if (match && match[1]) {
+          const version = parseInt(match[1], 10);
+          if (!isNaN(version) && version > maxVersion) {
+            maxVersion = version;
+          }
+        }
+      }
+    });
+
+    // Determine the next version number and pad with leading zeros
+    const nextVersion = maxVersion + 1;
+    const nextVersionStr = String(nextVersion).padStart(4, '0');
+    const newEditorName = `specs_v${nextVersionStr}.md`;
+
+    // Create new editor with the calculated name
+    const editor = await this.stateManager.createEditor(newEditorName);
+
+    // If there's a project root, create the file in the project folder
+    if (this.projectRoot && window.electronAPI) {
+      const filePath = `${this.projectRoot}/${newEditorName}`;
+
+      // Create the file with empty content
+      const result = await window.electronAPI.writeFile(filePath, editor.content);
+      if (result.success) {
+        // Update the editor's file path
+        this.stateManager.setFilePath(editor.id, filePath);
+
+        // Refresh the file explorer to show the new file
+        if (this.fileExplorer) {
+          await this.fileExplorer.refresh();
+        }
+
+        console.log('[App] Created new file in project:', filePath);
+      } else {
+        console.error('[App] Failed to create file:', result.error);
+      }
+    }
+
     // Scroll to the new editor
     setTimeout(() => {
       this.editorContainer.scrollToEditor(editor.id);
@@ -219,11 +321,24 @@ class App {
   }
 
   private handleSelectTab(id: string): void {
+    this.activeEditorId = id;
     this.editorContainer.scrollToEditor(id);
   }
 
   private async handleCloseTab(id: string): Promise<void> {
+    const editors = this.stateManager.getAllEditors();
+    const closingIndex = editors.findIndex((e) => e.id === id);
     await this.stateManager.removeEditor(id);
+    if (this.activeEditorId === id) {
+      const nextEditors = this.stateManager.getAllEditors();
+      if (nextEditors.length === 0) {
+        this.activeEditorId = null;
+      } else {
+        const nextIndex = Math.min(closingIndex, nextEditors.length - 1);
+        this.activeEditorId = nextEditors[nextIndex].id;
+        this.editorContainer.scrollToEditor(this.activeEditorId);
+      }
+    }
   }
 
   private handleReorder(fromIndex: number, toIndex: number): void {
@@ -263,12 +378,25 @@ class App {
 
     const result = await window.electronAPI.readFile(filePath);
     if (result.success && result.content !== undefined) {
-      // Create a new editor with the file content
       const fileName = filePath.split('/').pop() || filePath;
-      const newEditor = await this.stateManager.createEditor(fileName);
-      this.stateManager.updateEditorContent(newEditor.id, result.content);
+      const editor = await this.stateManager.openFileEditor(filePath, fileName, result.content);
+      this.activeEditorId = editor.id;
+      setTimeout(() => {
+        this.editorContainer.scrollToEditor(editor.id);
+      }, 50);
     } else {
       console.error('[App] Failed to read file:', result.error);
+    }
+  }
+
+  private async handleFileDelete(filePath: string): Promise<void> {
+    // Find and close any editor that has this file path
+    const editors = this.stateManager.getAllEditors();
+    const editorToDelete = editors.find(e => e.filePath === filePath);
+
+    if (editorToDelete) {
+      await this.handleCloseTab(editorToDelete.id);
+      console.log('[App] Closed editor for deleted file:', filePath);
     }
   }
 
@@ -284,6 +412,88 @@ class App {
 
   private handleToggleTheme(): void {
     this.themeManager.toggleTheme();
+  }
+
+  private async handleCreateProject(): Promise<void> {
+    if (!window.electronAPI) {
+      console.error('[App] electronAPI not available');
+      return;
+    }
+
+    const result = await window.electronAPI.createProject();
+    if (!result.success || !result.projectPath) {
+      if (result.error && result.error !== 'No directory selected') {
+        alert(`Failed to create project: ${result.error}`);
+      }
+      return;
+    }
+
+    if (this.fileExplorer) {
+      await this.fileExplorer.loadProjectRoot(result.projectPath);
+    }
+
+    await this.handleFileSelect(`${result.projectPath}/specs_v0001.md`);
+  }
+
+  private async handleOpenProject(): Promise<void> {
+    if (!window.electronAPI) {
+      console.error('[App] electronAPI not available');
+      return;
+    }
+
+    const result = await window.electronAPI.selectDirectory();
+    if (!result.success || !result.path) {
+      return;
+    }
+
+    if (this.fileExplorer) {
+      await this.fileExplorer.loadProjectRoot(result.path);
+    }
+  }
+
+  private extractSpecsVersion(fileName: string): number | null {
+    const match = /^specs_v(\d{4})\.md$/i.exec(fileName);
+    if (!match) return null;
+    return Number.parseInt(match[1], 10);
+  }
+
+  private async findNextSpecsPath(): Promise<string | null> {
+    if (!this.projectRoot) {
+      return null;
+    }
+
+    const activeEditor = this.activeEditorId
+      ? this.stateManager.getEditor(this.activeEditorId)
+      : undefined;
+
+    let currentVersion = 0;
+    if (activeEditor?.name) {
+      const parsed = this.extractSpecsVersion(activeEditor.name);
+      if (parsed) {
+        currentVersion = parsed;
+      }
+    }
+
+    // If current tab is not a specs tab, use the latest opened specs tab as baseline.
+    if (currentVersion === 0) {
+      const versions = this.stateManager
+        .getAllEditors()
+        .map((e) => this.extractSpecsVersion(e.name))
+        .filter((v): v is number => v !== null);
+      currentVersion = versions.length > 0 ? Math.max(...versions) : 0;
+    }
+
+    const maxTries = 9999;
+    for (let next = currentVersion + 1; next <= maxTries; next++) {
+      const fileName = `specs_v${String(next).padStart(4, '0')}.md`;
+      const path = `${this.projectRoot}/${fileName}`;
+      const probe = await window.electronAPI.readFile(path);
+      if (probe.success) {
+        return path;
+      }
+    }
+
+    return null;
   }
 
   private handleGetSpecs(): void {

@@ -23,6 +23,13 @@ export interface Metadata {
 export interface AppConfig {
   apiKey: string;
   baseUrl: string;
+  lastProjectPath: string;
+}
+
+interface NewProjectResult {
+  success: boolean;
+  projectPath?: string;
+  error?: string;
 }
 
 const EDITORS_DIR = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'editors');
@@ -33,6 +40,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DEFAULT_CONFIG: AppConfig = {
   apiKey: '',
   baseUrl: 'https://api.anthropic.com',
+  lastProjectPath: '',
 };
 
 async function ensureConfigDir() {
@@ -440,6 +448,17 @@ export function registerIpcHandlers() {
     }
   });
 
+  // Write file content
+  ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fs.writeFile(filePath, content, 'utf-8');
+      return { success: true };
+    } catch (error: any) {
+      console.error('[FS] Error writing file:', error);
+      return { success: false, error: error.message || 'Failed to write file' };
+    }
+  });
+
   // Select directory
   ipcMain.handle('fs:selectDirectory', async (): Promise<{ success: boolean; path?: string; error?: string }> => {
     try {
@@ -456,6 +475,95 @@ export function registerIpcHandlers() {
     } catch (error: any) {
       console.error('[FS] Error selecting directory:', error);
       return { success: false, error: error.message || 'Failed to select directory' };
+    }
+  });
+
+  // Create a new project in a selected folder
+  ipcMain.handle('project:create', async (): Promise<NewProjectResult> => {
+    try {
+      const selectResult = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+        title: 'Select a folder for the new project',
+      });
+
+      if (selectResult.canceled || selectResult.filePaths.length === 0) {
+        return { success: false, error: 'No directory selected' };
+      }
+
+      const projectPath = selectResult.filePaths[0];
+
+      const readmeContent = [
+        '# OnlySpecs Project',
+        '',
+        'This project is organized by specification versions and matching implementation versions.',
+        '',
+        '## Structure',
+        '',
+        '- `specs_v0001.md`, `specs_v0002.md`, ...',
+        '- `code_v0001/`, `code_v0002/`, ...',
+        '',
+        '## Workflow',
+        '',
+        '1. Read a specs file (`specs_vXXXX.md`).',
+        '2. Implement the code in the corresponding `code_vXXXX/` folder.',
+        '3. Create the next specs version when requirements evolve.',
+        '',
+      ].join('\n');
+
+      const licenseContent = [
+        'MIT License',
+        '',
+        'Copyright (c) 2026',
+        '',
+        'Permission is hereby granted, free of charge, to any person obtaining a copy',
+        'of this software and associated documentation files (the "Software"), to deal',
+        'in the Software without restriction, including without limitation the rights',
+        'to use, copy, modify, merge, publish, distribute, sublicense, and/or sell',
+        'copies of the Software, and to permit persons to whom the Software is',
+        'furnished to do so, subject to the following conditions:',
+        '',
+        'The above copyright notice and this permission notice shall be included in all',
+        'copies or substantial portions of the Software.',
+        '',
+        'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+        'IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,',
+        'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE',
+        'AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER',
+        'LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,',
+        'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE',
+        'SOFTWARE.',
+        '',
+      ].join('\n');
+
+      const specsTemplate = [
+        '# Specifications v0001',
+        '',
+        '## Overview',
+        '- Describe the product goal and target users.',
+        '',
+        '## Functional Requirements',
+        '- FR-1:',
+        '- FR-2:',
+        '',
+        '## Non-functional Requirements',
+        '- Performance:',
+        '- Reliability:',
+        '- Security:',
+        '',
+        '## Acceptance Criteria',
+        '- [ ] Criterion 1',
+        '- [ ] Criterion 2',
+        '',
+      ].join('\n');
+
+      await fs.writeFile(path.join(projectPath, 'README.md'), readmeContent, 'utf-8');
+      await fs.writeFile(path.join(projectPath, 'LICENSE'), licenseContent, 'utf-8');
+      await fs.writeFile(path.join(projectPath, 'specs_v0001.md'), specsTemplate, 'utf-8');
+
+      return { success: true, projectPath };
+    } catch (error: any) {
+      console.error('[Project] Error creating project:', error);
+      return { success: false, error: error.message || 'Failed to create project' };
     }
   });
 
@@ -494,4 +602,17 @@ export function registerIpcHandlers() {
       return { success: false, error: error.message || 'Failed to read directory' };
     }
   });
+
+  // Delete file
+  ipcMain.handle('fs:deleteFile', async (_event, filePath: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fs.unlink(filePath);
+      console.log('[FS] File deleted:', filePath);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[FS] Error deleting file:', error);
+      return { success: false, error: error.message || 'Failed to delete file' };
+    }
+  });
+
 }
