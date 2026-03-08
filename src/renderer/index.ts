@@ -414,8 +414,9 @@ class App {
     editorWithTerminal.setCwd(this.projectRoot);
 
     // Build the prompt text for interactive Claude terminal mode
+    const specsFilePath = `${this.projectRoot}/${specsFileName}`;
     const claudePrompt =
-      `Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, ` +
+      `Please read the ${specsFilePath} file and generate the implementation code for it at ${codeFolderPath}, ` +
       `then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. ` +
       `Do not ask any questions to user. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately.`;
 
