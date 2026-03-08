@@ -7,6 +7,14 @@ export interface EditorData {
   filePath?: string;
 }
 
+export interface TerminalCreateOptions {
+  cwd?: string;
+  command?: string;
+  args?: string[];
+  cols?: number;
+  rows?: number;
+}
+
 const electronAPI = {
   // Load all saved editors
   loadAllEditors: (): Promise<EditorData[]> => ipcRenderer.invoke('editor:load-all'),
@@ -33,11 +41,14 @@ const electronAPI = {
   incrementNextIndex: (): Promise<number> => ipcRenderer.invoke('editor:increment-next-index'),
 
   // PTY Terminal APIs
-  createTerminal: (sessionId: string, cwd?: string): Promise<{ pid: number }> =>
-    ipcRenderer.invoke('terminal:create', sessionId, cwd),
+  createTerminal: (sessionId: string, cwdOrOptions?: string | TerminalCreateOptions): Promise<{ pid: number }> =>
+    ipcRenderer.invoke('terminal:create', sessionId, cwdOrOptions),
 
   writeTerminal: (sessionId: string, data: string): Promise<void> =>
     ipcRenderer.invoke('terminal:write', sessionId, data),
+
+  runTerminalCommand: (sessionId: string, command: string): Promise<void> =>
+    ipcRenderer.invoke('terminal:run-command', sessionId, command),
 
   resizeTerminal: (sessionId: string, cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('terminal:resize', sessionId, cols, rows),
@@ -124,8 +135,9 @@ export interface ElectronAPIType {
   saveOrder(order: string[]): Promise<void>;
   getNextIndex(): Promise<number>;
   incrementNextIndex(): Promise<number>;
-  createTerminal(sessionId: string, cwd?: string): Promise<{ pid: number }>;
+  createTerminal(sessionId: string, cwdOrOptions?: string | TerminalCreateOptions): Promise<{ pid: number }>;
   writeTerminal(sessionId: string, data: string): Promise<void>;
+  runTerminalCommand(sessionId: string, command: string): Promise<void>;
   resizeTerminal(sessionId: string, cols: number, rows: number): Promise<void>;
   killTerminal(sessionId: string): Promise<void>;
   onTerminalData(sessionId: string, callback: (data: string) => void): () => void;

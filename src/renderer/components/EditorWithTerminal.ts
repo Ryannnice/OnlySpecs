@@ -131,7 +131,7 @@ export class EditorWithTerminal {
     }
   }
 
-  private render(id: string, name: string, isCompareDisabled: boolean, isCompareSelected: boolean, isPreviewSelected: boolean): void {
+  private render(id: string, _name: string, isCompareDisabled: boolean, isCompareSelected: boolean, isPreviewSelected: boolean): void {
     this.container.className = 'editor-with-terminal';
     this.container.innerHTML = '';
 
@@ -568,38 +568,6 @@ export class EditorWithTerminal {
     return '';
   }
 
-  private toggleTerminals(id: string): void {
-    this.isTerminalExpanded = !this.isTerminalExpanded;
-    EditorWithTerminal.terminalStates.set(id, this.isTerminalExpanded);
-
-    // Update button
-    this.terminalToggle.title = this.isTerminalExpanded ? 'Hide Terminal' : 'Show Terminal';
-    this.terminalToggle.classList.toggle('active', this.isTerminalExpanded);
-
-    // Update icon rotation
-    const icon = this.terminalToggle.querySelector('svg');
-    if (icon) {
-      icon.style.transform = this.isTerminalExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-
-    // Show/hide terminals container and add button
-    if (this.isTerminalExpanded) {
-      this.terminalsContainer.style.display = 'flex';
-      this.addTerminalBtn.style.display = 'flex';
-
-      // Create initial terminal if none exist
-      if (this.terminals.size === 0) {
-        this.addNewTerminal();
-      }
-    } else {
-      this.terminalsContainer.style.display = 'none';
-      this.addTerminalBtn.style.display = 'none';
-    }
-
-    // Trigger resize event for Monaco to adjust
-    window.dispatchEvent(new Event('resize'));
-  }
-
   private addNewTerminal(cwd?: string): void {
     const terminalId = this.generateTerminalId();
 
@@ -641,7 +609,10 @@ export class EditorWithTerminal {
     this.terminalsWrapper.appendChild(terminalContainer);
 
     // Create terminal instance (without header since we have our own)
-    const terminal = new Terminal(terminalContent, this.themeManager.getCurrentTheme(), false, terminalCwd);
+    const terminal = new Terminal(terminalContent, this.themeManager.getCurrentTheme(), {
+      showHeader: false,
+      cwd: terminalCwd,
+    });
 
     // Store terminal instance
     this.terminals.set(terminalId, {
@@ -778,11 +749,78 @@ export class EditorWithTerminal {
       // Focus the terminal
       newTerminal.terminal.focus();
       // Write the command to the terminal
-      await window.electronAPI.writeTerminal(newTerminal.sessionId, command + '\r');
+      await window.electronAPI.runTerminalCommand(newTerminal.sessionId, command);
       // Return the sessionId so caller can listen for terminal exit
       return newTerminal.sessionId;
     }
     throw new Error('Failed to create terminal');
+  }
+
+  async runCommandInClaudeTerminal(command: string, cwd?: string): Promise<string> {
+    if (cwd) {
+      this.cwd = cwd;
+    }
+
+    if (!this.isTerminalExpanded) {
+      this.isTerminalExpanded = true;
+      EditorWithTerminal.terminalStates.set(this.editorId, true);
+      this.terminalsContainer.style.display = 'flex';
+      this.terminalResizeHandle.style.display = 'block';
+      this.addTerminalBtn.style.display = 'flex';
+      this.terminalToggle.classList.add('active');
+    }
+
+    const terminalId = this.generateTerminalId();
+    const terminalCwd = cwd || this.cwd;
+
+    const terminalContainer = document.createElement('div');
+    terminalContainer.className = 'terminal-item';
+    terminalContainer.dataset.terminalId = terminalId;
+
+    const header = document.createElement('div');
+    header.className = 'terminal-item-header';
+
+    const title = document.createElement('span');
+    title.className = 'terminal-item-title';
+    title.textContent = `Claude ${this.nextTerminalId}`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'terminal-item-close';
+    closeBtn.innerHTML = '×';
+    closeBtn.title = 'Close Terminal';
+    closeBtn.addEventListener('click', () => {
+      this.removeTerminal(terminalId);
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const terminalContent = document.createElement('div');
+    terminalContent.className = 'terminal-item-content';
+    terminalContainer.appendChild(header);
+    terminalContainer.appendChild(terminalContent);
+    this.terminalsWrapper.appendChild(terminalContainer);
+
+    const terminal = new Terminal(terminalContent, this.themeManager.getCurrentTheme(), {
+      showHeader: false,
+      cwd: terminalCwd,
+      command: 'claude',
+      args: ['--dangerously-skip-permissions'],
+    });
+
+    this.terminals.set(terminalId, {
+      terminal,
+      container: terminalContainer,
+      sessionId: terminal.sessionId,
+      id: terminalId
+    });
+
+    await terminal.waitUntilReady();
+    await terminal.waitUntilPromptReady();
+    terminal.focus();
+    await terminal.runCommand(command);
+    // Return the sessionId so caller can listen for terminal exit
+    return terminal.sessionId;
   }
 
   setOriginalEditorInstance(instance: any): void {

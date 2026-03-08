@@ -413,13 +413,16 @@ class App {
     // Set the cwd for the terminal to use the project root
     editorWithTerminal.setCwd(this.projectRoot);
 
-    // Build the command (cwd is set via setCwd, so no need for cd)
-    const command = `claude --dangerously-skip-permissions -p "Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. Do not ask any questions to user. Do the task in headless mode. If any decisions need to be made, make them autonomously and DO NOT ASK USER. When the task is done, exit immediately."`;
+    // Build the prompt text for interactive Claude terminal mode
+    const claudePrompt =
+      `Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, ` +
+      `then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. ` +
+      `Do not ask any questions to user. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately.`;
 
-    console.log('[App] Running command:', command);
+    console.log('[App] Running interactive Claude prompt:', claudePrompt);
 
-    // Run the command in the terminal and get the sessionId
-    const sessionId = await editorWithTerminal.runCommandInTerminal(command);
+    // Run Claude in interactive terminal mode and inject the prompt into the session
+    const sessionId = await editorWithTerminal.runCommandInClaudeTerminal(claudePrompt);
 
     // Listen for terminal exit to do final refresh
     const exitUnsubscribe = window.electronAPI.onTerminalExit(sessionId, async () => {
@@ -900,7 +903,10 @@ class App {
         // Create terminal instance
         this.githubImportTerminal = new Terminal(
           terminalContainer,
-          this.themeManager.getCurrentTheme()
+          this.themeManager.getCurrentTheme(),
+          {
+            showHeader: true,
+          }
         );
 
         // Store repo path for later use
@@ -957,7 +963,7 @@ class App {
         // Wait a bit for terminal to initialize, then send commands
         setTimeout(async () => {
           // CD to the repo directory and run claude, then exit automatically
-          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately." && exit\r`;
+          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately."`;
           if (window.electronAPI) {
             await window.electronAPI.writeTerminal(this.githubImportTerminal!.sessionId, commands);
           }

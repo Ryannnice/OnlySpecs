@@ -2,6 +2,15 @@ import { Terminal as XTerminal, ITheme } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 
+interface TerminalLaunchOptions {
+  showHeader?: boolean;
+  cwd?: string;
+  command?: string;
+  args?: string[];
+  cols?: number;
+  rows?: number;
+}
+
 // Terminal themes matching the app themes
 const DARK_THEME: ITheme = {
   background: '#1e1e1e',
@@ -62,18 +71,22 @@ export class Terminal {
   private unsubscribeExit?: () => void;
   private currentTheme: 'light' | 'dark' = 'dark';
   private showHeader: boolean;
-  private cwd?: string;
+  private launchOptions: TerminalLaunchOptions;
   private startPromise: Promise<void>;
   private promptReadyPromise: Promise<void>;
   private resolvePromptReady?: () => void;
   private hasPromptData = false;
 
-  constructor(container: HTMLElement, theme: 'light' | 'dark' = 'dark', showHeader: boolean = true, cwd?: string) {
+  constructor(
+    container: HTMLElement,
+    theme: 'light' | 'dark' = 'dark',
+    options: TerminalLaunchOptions = {}
+  ) {
     this.container = container;
     this.sessionId = `terminal-${Date.now()}-${Math.random()}`;
     this.currentTheme = theme;
-    this.showHeader = showHeader;
-    this.cwd = cwd;
+    this.showHeader = options.showHeader ?? true;
+    this.launchOptions = options;
 
     this.xterm = new XTerminal({
       allowProposedApi: true,
@@ -149,7 +162,7 @@ export class Terminal {
     if (!window.electronAPI) return;
 
     try {
-      await window.electronAPI.createTerminal(this.sessionId, this.cwd);
+      await window.electronAPI.createTerminal(this.sessionId, this.launchOptions);
 
       // Listen for data from PTY
       this.unsubscribeData = window.electronAPI.onTerminalData(this.sessionId, (data) => {
@@ -196,6 +209,12 @@ export class Terminal {
 
   waitUntilPromptReady(): Promise<void> {
     return this.promptReadyPromise;
+  }
+
+  async runCommand(command: string): Promise<void> {
+    if (!window.electronAPI) return;
+    await this.waitUntilReady();
+    await window.electronAPI.runTerminalCommand(this.sessionId, command);
   }
 
   fit(): void {

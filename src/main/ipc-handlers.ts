@@ -32,6 +32,22 @@ interface NewProjectResult {
   error?: string;
 }
 
+interface TerminalCreateOptions {
+  cwd?: string;
+  command?: string;
+  args?: string[];
+  cols?: number;
+  rows?: number;
+}
+
+function isClaudeCommand(command: string): boolean {
+  const normalized = command.trim().toLowerCase();
+  if (normalized === 'claude') return true;
+  const lastSlash = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'));
+  const base = lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized;
+  return base === 'claude';
+}
+
 const EDITORS_DIR = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'editors');
 const METADATA_FILE = path.join(EDITORS_DIR, 'metadata.json');
 const CONFIG_DIR = path.join(os.homedir(), 'Documents', 'OnlySpecs');
@@ -216,36 +232,65 @@ export function registerIpcHandlers() {
   const ptySessions = new Map<string, IPty>();
 
   // Create a new PTY session
-  ipcMain.handle('terminal:create', async (_event, sessionId: string, cwd?: string): Promise<{ pid: number }> => {
-    const shell = process.env.SHELL || '/bin/bash';
-    const ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-color',
-      cols: 80,
-      rows: 24,
-      cwd: cwd || os.homedir(),
-      env: process.env as { [key: string]: string },
-    });
+  ipcMain.handle(
+    'terminal:create',
+    async (
+      _event,
+      sessionId: string,
+      cwdOrOptions?: string | TerminalCreateOptions
+    ): Promise<{ pid: number }> => {
+      const options: TerminalCreateOptions =
+        typeof cwdOrOptions === 'string'
+          ? { cwd: cwdOrOptions }
+          : (cwdOrOptions || {});
+      const command = options.command || process.env.SHELL || '/bin/bash';
+      const commandParts = command.trim().split(/\s+/).filter(Boolean);
+      const executable = commandParts[0] || command;
+      const inlineArgs = commandParts.slice(1);
+      const args = [...inlineArgs, ...(options.args || [])];
+      if (isClaudeCommand(executable) && !args.includes('--dangerously-skip-permissions')) {
+        args.push('--dangerously-skip-permissions');
+      }
+      const cols = options.cols || 80;
+      const rows = options.rows || 24;
 
-    ptySessions.set(sessionId, ptyProcess);
+      const ptyProcess = pty.spawn(executable, args, {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        cwd: options.cwd || os.homedir(),
+        env: process.env as { [key: string]: string },
+      });
 
-    // Send data back to renderer when PTY emits data
-    ptyProcess.onData((data) => {
-      _event.sender.send(`terminal:data-${sessionId}`, data);
-    });
+      ptySessions.set(sessionId, ptyProcess);
 
-    ptyProcess.onExit(({ exitCode, signal }) => {
-      _event.sender.send(`terminal:exit-${sessionId}`, { exitCode, signal });
-      ptySessions.delete(sessionId);
-    });
+      // Send data back to renderer when PTY emits data
+      ptyProcess.onData((data) => {
+        _event.sender.send(`terminal:data-${sessionId}`, data);
+      });
 
-    return { pid: ptyProcess.pid };
-  });
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        _event.sender.send(`terminal:exit-${sessionId}`, { exitCode, signal });
+        ptySessions.delete(sessionId);
+      });
+
+      return { pid: ptyProcess.pid };
+    }
+  );
 
   // Write to PTY
   ipcMain.handle('terminal:write', async (_event, sessionId: string, data: string): Promise<void> => {
     const ptyProcess = ptySessions.get(sessionId);
     if (ptyProcess) {
       ptyProcess.write(data);
+    }
+  });
+
+  // Write command to PTY and submit Enter
+  ipcMain.handle('terminal:run-command', async (_event, sessionId: string, command: string): Promise<void> => {
+    const ptyProcess = ptySessions.get(sessionId);
+    if (ptyProcess) {
+      ptyProcess.write(command + '\r');
     }
   });
 
