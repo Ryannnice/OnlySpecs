@@ -784,8 +784,10 @@ class App {
     // Hide form elements and show processing indicator
     selectionSection.style.display = 'none';
     githubSection.style.display = 'none';
-    if (modalFooter) {
-      modalFooter.style.display = 'none';
+    // Disable the Import button instead of hiding the footer
+    if (this.currentModal) {
+      this.currentModal.setConfirmButtonDisabled(true);
+      this.currentModal.setConfirmButtonText('Importing...');
     }
     processingIndicator.style.display = 'block';
 
@@ -900,17 +902,137 @@ class App {
         // Add terminal to modal content
         content.appendChild(terminalContainer);
 
-        // Create terminal instance
+        // Create terminal instance with claude command
         this.githubImportTerminal = new Terminal(
           terminalContainer,
           this.themeManager.getCurrentTheme(),
           {
             showHeader: true,
+            cwd: result.repoPath,
+            command: 'claude',
+            args: ['--dangerously-skip-permissions'],
           }
         );
 
         // Store repo path for later use
         (terminalContainer as any).dataset.repoPath = result.repoPath;
+
+        const outputPath = `${result.repoPath}/output_specs.md`;
+        let outputLoaded = false; // Flag to prevent duplicate loading
+        let lastFileSize: number | null = null;
+        let stableStartTime: number | null = null;
+        let pollingIntervalId: ReturnType<typeof setInterval> | null = null;
+
+        // Helper function to load output file and close modal
+        const loadOutputAndClose = async (source: string) => {
+          if (outputLoaded) {
+            console.log(`[GitHub Import] Output already loaded, skipping (${source})`);
+            return;
+          }
+          outputLoaded = true;
+
+          console.log(`[GitHub Import] Loading output file (${source})`);
+          console.log('[GitHub Import] Reading output from:', outputPath);
+
+          // Stop polling
+          if (pollingIntervalId) {
+            clearInterval(pollingIntervalId);
+            pollingIntervalId = null;
+          }
+
+          if (window.electronAPI) {
+            const fileResult = await window.electronAPI.readFile(outputPath);
+
+            if (fileResult.success && fileResult.content) {
+              console.log('[GitHub Import] Output file read successfully, length:', fileResult.content.length);
+
+              // Create new editor with the specs
+              const newEditorName = `Specs - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+              const newEditor = await this.stateManager.createEditor(newEditorName);
+              this.stateManager.updateEditorContent(newEditor.id, fileResult.content);
+
+              // Re-enable the Import button
+              if (this.currentModal) {
+                this.currentModal.setConfirmButtonDisabled(false);
+                this.currentModal.setConfirmButtonText('Import');
+              }
+
+              // Close the modal and clean up
+              if (this.currentModal) {
+                this.currentModal.close();
+                this.currentModal = null;
+              }
+
+              // Clean up terminal
+              if (this.githubImportTerminal) {
+                this.githubImportTerminal.dispose();
+                this.githubImportTerminal = null;
+              }
+            } else {
+              console.error('[GitHub Import] Failed to read output file:', fileResult.error);
+              const timestamp = new Date().toLocaleTimeString();
+              if (processingLog) {
+                processingLog.style.display = 'block';
+                processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">Failed to read output_specs.md: ${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
+                processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Please check the terminal output above for any errors.</span></div>`;
+                processingLog.scrollTop = processingLog.scrollHeight;
+              }
+              outputLoaded = false; // Allow retry if read failed
+            }
+          }
+        };
+
+        // Poll for output_specs.md file - check if file exists and is stable (not modified for 30 seconds)
+        pollingIntervalId = setInterval(async () => {
+          if (outputLoaded || !window.electronAPI) return;
+
+          try {
+            const existsResult = await window.electronAPI.pathExists(outputPath);
+
+            if (existsResult.exists) {
+              const fileResult = await window.electronAPI.readFile(outputPath);
+
+              if (fileResult.success && fileResult.content) {
+                const currentSize = fileResult.content.length;
+                const now = Date.now();
+
+                if (lastFileSize !== null && currentSize === lastFileSize) {
+                  // File size hasn't changed since last check
+                  if (stableStartTime === null) {
+                    stableStartTime = now;
+                    console.log('[GitHub Import] File size stable, starting 30s timer...');
+                    const timestamp = new Date().toLocaleTimeString();
+                    if (processingLog) {
+                      processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Output file detected, waiting for completion (30s stability check)...</span></div>`;
+                      processingLog.scrollTop = processingLog.scrollHeight;
+                    }
+                  } else {
+                    const stableDuration = now - stableStartTime;
+                    console.log(`[GitHub Import] File stable for ${Math.round(stableDuration / 1000)}s`);
+
+                    if (stableDuration >= 30000) {
+                      // File has been stable for 30 seconds
+                      console.log('[GitHub Import] Output file stable for 30 seconds, loading...');
+                      const timestamp = new Date().toLocaleTimeString();
+                      if (processingLog) {
+                        processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Output file complete. Loading...</span></div>`;
+                        processingLog.scrollTop = processingLog.scrollHeight;
+                      }
+                      await loadOutputAndClose('file-stable-30s');
+                    }
+                  }
+                } else {
+                  // File size changed or first check, reset stability timer
+                  stableStartTime = null;
+                }
+
+                lastFileSize = currentSize;
+              }
+            }
+          } catch (err) {
+            console.error('[GitHub Import] Error polling for output file:', err);
+          }
+        }, 5000); // Check every 5 seconds
 
         // Listen for terminal exit to read the output file
         const terminalExitUnsubscribe = window.electronAPI.onTerminalExit(
@@ -918,41 +1040,17 @@ class App {
           async (exitCode: number, signal: number) => {
             console.log('[GitHub Import] Terminal exited with code:', exitCode, 'signal:', signal);
 
-            // Read the output file
-            const outputPath = `${result.repoPath}/output_specs.md`;
-            console.log('[GitHub Import] Reading output from:', outputPath);
+            // Wait a moment for any final file writes
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            if (window.electronAPI) {
-              const fileResult = await window.electronAPI.readFile(outputPath);
+            // Try to load the output file
+            await loadOutputAndClose('terminal-exit');
 
-              if (fileResult.success && fileResult.content) {
-                console.log('[GitHub Import] Output file read successfully, length:', fileResult.content.length);
-
-                // Create new editor with the specs immediately
-                const newEditorName = `Specs - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
-                const newEditor = await this.stateManager.createEditor(newEditorName);
-                this.stateManager.updateEditorContent(newEditor.id, fileResult.content);
-
-                // Close the modal and clean up immediately
-                if (this.currentModal) {
-                  this.currentModal.close();
-                  this.currentModal = null;
-                }
-
-                // Clean up terminal
-                if (this.githubImportTerminal) {
-                  this.githubImportTerminal.dispose();
-                  this.githubImportTerminal = null;
-                }
-              } else {
-                console.error('[GitHub Import] Failed to read output file:', fileResult.error);
-                const timestamp = new Date().toLocaleTimeString();
-                if (processingLog) {
-                  processingLog.style.display = 'block';
-                  processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">Failed to read output_specs.md: ${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
-                  processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Please check the terminal output above for any errors.</span></div>`;
-                  processingLog.scrollTop = processingLog.scrollHeight;
-                }
+            // If output wasn't loaded, re-enable the button
+            if (!outputLoaded) {
+              if (this.currentModal) {
+                this.currentModal.setConfirmButtonDisabled(false);
+                this.currentModal.setConfirmButtonText('Import');
               }
             }
 
@@ -960,14 +1058,31 @@ class App {
           }
         );
 
-        // Wait a bit for terminal to initialize, then send commands
+        // Wait for terminal to be ready, then send the prompt
         setTimeout(async () => {
-          // CD to the repo directory and run claude, then exit automatically
-          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately."`;
+          if (!this.githubImportTerminal) return;
+
+          // Wait for terminal to be ready
+          await this.githubImportTerminal.waitUntilReady();
+          await this.githubImportTerminal.waitUntilPromptReady();
+
+          // First, press Enter to confirm "Yes, I trust this folder" safety check
+          // The safety check appears when Claude starts in a new directory
           if (window.electronAPI) {
-            await window.electronAPI.writeTerminal(this.githubImportTerminal!.sessionId, commands);
+            // Send Enter to confirm the default option (1. Yes, I trust this folder)
+            await window.electronAPI.writeTerminal(this.githubImportTerminal.sessionId, '\r');
+
+            // Wait for the safety check to be processed and Claude to be ready
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
-        }, 1000);
+
+          // Send the prompt text to Claude
+          const promptText = `please read the task doc at ${result.repoPath}/summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, shutdown this claude code program immediately.`;
+
+          if (window.electronAPI) {
+            await window.electronAPI.runTerminalCommand(this.githubImportTerminal.sessionId, promptText);
+          }
+        }, 500);
 
       } else if (result.success && result.output) {
         console.log('[GitHub Import] Success! Showing results...');
@@ -994,6 +1109,12 @@ class App {
       }
 
       progressUnsubscribe();
+
+      // Re-enable the Import button on error
+      if (this.currentModal) {
+        this.currentModal.setConfirmButtonDisabled(false);
+        this.currentModal.setConfirmButtonText('Import');
+      }
 
       this.showErrorInModal(
         `Error: ${error.message || 'Unknown error'}`,

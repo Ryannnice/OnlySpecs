@@ -156,4 +156,25 @@ export class Modal {
       document.body.removeChild(this.overlay);
     }
   }
+
+  setConfirmButtonDisabled(disabled: boolean): void {
+    const confirmBtn = this.dialog.querySelector('.modal-btn-confirm') as HTMLButtonElement;
+    if (confirmBtn) {
+      confirmBtn.disabled = disabled;
+      if (disabled) {
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.cursor = 'not-allowed';
+      } else {
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.cursor = 'pointer';
+      }
+    }
+  }
+
+  setConfirmButtonText(text: string): void {
+    const confirmBtn = this.dialog.querySelector('.modal-btn-confirm') as HTMLButtonElement;
+    if (confirmBtn) {
+      confirmBtn.textContent = text;
+    }
+  }
 }
