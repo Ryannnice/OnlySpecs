@@ -1,3 +1,5 @@
+import { Modal } from './Modal';
+
 export interface FileEntry {
   name: string;
   path: string;
@@ -10,6 +12,7 @@ export interface FileExplorerOptions {
   onFileSelect?: (filePath: string) => void;
   onFileDelete?: (filePath: string) => void;
   onRootChange?: (rootPath: string) => void;
+  onOpenInTerminal?: (filePath: string, isDirectory: boolean) => void;
   themeManager?: any;
 }
 
@@ -21,6 +24,9 @@ export class FileExplorer {
   private onFileSelect?: (filePath: string) => void;
   private onFileDelete?: (filePath: string) => void;
   private onRootChange?: (rootPath: string) => void;
+  private onOpenInTerminal?: (filePath: string, isDirectory: boolean) => void;
+  private contextMenu: HTMLElement | null = null;
+  private contextMenuTarget: { path: string; isDirectory: boolean; name: string } | null = null;
 
   constructor(container: HTMLElement, options: FileExplorerOptions = {}) {
     this.container = container;
@@ -28,7 +34,10 @@ export class FileExplorer {
     this.onFileSelect = options.onFileSelect;
     this.onFileDelete = options.onFileDelete;
     this.onRootChange = options.onRootChange;
+    this.onOpenInTerminal = options.onOpenInTerminal;
     this.render();
+    this.createContextMenu();
+    this.setupGlobalListeners();
   }
 
   private render(): void {
@@ -293,6 +302,28 @@ export class FileExplorer {
         }
       });
     });
+
+    // Right-click context menu for all file tree items
+    container.querySelectorAll('.file-tree-item-content').forEach(content => {
+      content.addEventListener('contextmenu', (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const mouseEvent = e as MouseEvent;
+
+        const item = (content as HTMLElement).closest('.file-tree-item') as HTMLElement;
+        if (!item) return;
+
+        const path = item.dataset.path;
+        const isDirectory = item.dataset.isDirectory === 'true';
+        const nameElem = item.querySelector('.file-tree-name');
+        const name = nameElem?.textContent || '';
+
+        if (path) {
+          this.showContextMenu(mouseEvent.clientX, mouseEvent.clientY, { path, isDirectory, name });
+        }
+      });
+    });
   }
 
   private async handleDelete(filePath: string, isDirectory: boolean): Promise<void> {
@@ -349,5 +380,232 @@ export class FileExplorer {
 
   public setTheme(theme: 'light' | 'dark'): void {
     // Theme is handled by CSS variables
+  }
+
+  private createContextMenu(): void {
+    this.contextMenu = document.createElement('div');
+    this.contextMenu.className = 'context-menu';
+    this.contextMenu.innerHTML = `
+      <div class="context-menu-item" data-action="openInTerminal">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M0 2v12h16V2H0zm15 11H1V3h14v10zM3 5h2v2H3V5zm0 3h2v2H3V8zm0 3h10v1H3v-1z"/>
+        </svg>
+        <span>Open in Terminal</span>
+      </div>
+      <div class="context-menu-item" data-action="revealInFinder">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M1 4v10a1 1 0 001 1h12a1 1 0 001-1V4H1zm1-2h12a2 2 0 012 2v10a2 2 0 01-2 2H2a2 2 0 01-2-2V4a2 2 0 012-2z"/>
+        </svg>
+        <span>Reveal in Finder</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="copyPath">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4 4h3v1H4v8h6v-2h1v3H3V4h1zm4-2h6v10H8V2zm1 1v8h4V3H9z"/>
+        </svg>
+        <span>Copy Path</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="rename">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M11.498 1.502a1.5 1.5 0 012.121 0l1.879 1.879a1.5 1.5 0 010 2.121l-9.88 9.88a.5.5 0 01-.207.121l-3.5 1a.5.5 0 01-.624-.624l1-3.5a.5.5 0 01.121-.207l9.88-9.88zm1.414.707a.5.5 0 00-.707 0L10.5 4.707 12.293 6.5l1.707-1.707a.5.5 0 000-.707l-1.086-1.086zM11.793 5.5L10 3.707l-8 8V14h2.293l8-8z"/>
+        </svg>
+        <span>Rename</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item context-menu-item-danger" data-action="delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3,6 5,6 21,6"/>
+          <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
+        </svg>
+        <span>Delete</span>
+      </div>
+    `;
+    document.body.appendChild(this.contextMenu);
+
+    // Add click handlers for menu items
+    this.contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = (item as HTMLElement).dataset.action;
+        if (action && this.contextMenuTarget) {
+          this.handleContextMenuAction(action);
+        }
+        this.hideContextMenu();
+      });
+    });
+  }
+
+  private setupGlobalListeners(): void {
+    // Hide context menu when clicking outside
+    document.addEventListener('click', () => {
+      this.hideContextMenu();
+    });
+
+    // Hide context menu on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.hideContextMenu();
+      }
+    });
+  }
+
+  private showContextMenu(x: number, y: number, target: { path: string; isDirectory: boolean; name: string }): void {
+    if (!this.contextMenu) return;
+
+    this.contextMenuTarget = target;
+
+    // Position the menu
+    this.contextMenu.style.left = `${x}px`;
+    this.contextMenu.style.top = `${y}px`;
+    this.contextMenu.classList.add('visible');
+
+    // Adjust position if menu goes off screen
+    const rect = this.contextMenu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      this.contextMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+      this.contextMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
+    }
+  }
+
+  private hideContextMenu(): void {
+    if (this.contextMenu) {
+      this.contextMenu.classList.remove('visible');
+    }
+    this.contextMenuTarget = null;
+  }
+
+  private async handleContextMenuAction(action: string): Promise<void> {
+    if (!this.contextMenuTarget) return;
+
+    const { path, isDirectory, name } = this.contextMenuTarget;
+
+    switch (action) {
+      case 'openInTerminal':
+        if (this.onOpenInTerminal) {
+          this.onOpenInTerminal(path, isDirectory);
+        }
+        break;
+
+      case 'revealInFinder':
+        if (window.electronAPI) {
+          const result = await window.electronAPI.revealInFinder(path);
+          if (!result.success) {
+            alert('Failed to reveal in Finder: ' + (result.error || 'Unknown error'));
+          }
+        }
+        break;
+
+      case 'copyPath':
+        if (window.electronAPI) {
+          await window.electronAPI.copyPath(path);
+        }
+        break;
+
+      case 'rename':
+        await this.handleRename(path, name, isDirectory);
+        break;
+
+      case 'delete':
+        await this.handleDelete(path, isDirectory);
+        break;
+    }
+  }
+
+  private async handleRename(oldPath: string, oldName: string, isDirectory: boolean): Promise<void> {
+    // Create modal content with input field
+    const content = document.createElement('div');
+    content.className = 'rename-dialog-content';
+
+    const label = document.createElement('label');
+    label.textContent = `Enter new name for "${oldName}":`;
+    label.className = 'rename-label';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = oldName;
+    input.className = 'rename-input';
+    input.placeholder = 'Enter new name';
+
+    // Select the filename without extension for files
+    const lastDotIndex = oldName.lastIndexOf('.');
+    if (!isDirectory && lastDotIndex > 0) {
+      setTimeout(() => {
+        input.setSelectionRange(0, lastDotIndex);
+      }, 0);
+    } else {
+      setTimeout(() => {
+        input.select();
+      }, 0);
+    }
+
+    content.appendChild(label);
+    content.appendChild(input);
+
+    let newName: string | null = null;
+
+    const modal = new Modal({
+      title: isDirectory ? 'Rename Folder' : 'Rename File',
+      content,
+      confirmText: 'Rename',
+      cancelText: 'Cancel',
+      width: '400px',
+      onConfirm: () => {
+        newName = input.value.trim();
+      },
+      onCancel: () => {
+        newName = null;
+      }
+    });
+
+    // Handle Enter key in input
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        newName = input.value.trim();
+        modal.close();
+      }
+    });
+
+    modal.open();
+
+    // Wait for modal to close and check result
+    await new Promise<void>((resolve) => {
+      const checkClosed = setInterval(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (!overlay) {
+          clearInterval(checkClosed);
+          resolve();
+        }
+      }, 100);
+    });
+
+    if (!newName || newName === oldName) return;
+
+    if (!window.electronAPI) {
+      console.error('[FileExplorer] electronAPI not available');
+      return;
+    }
+
+    const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+    const newPath = `${parentPath}/${newName}`;
+
+    const result = await window.electronAPI.renamePath(oldPath, newPath);
+    if (result.success) {
+      await this.refresh();
+    } else {
+      // Show error modal
+      const errorContent = document.createElement('div');
+      errorContent.innerHTML = `<p>Failed to rename: ${result.error || 'Unknown error'}</p>`;
+      const errorModal = new Modal({
+        title: 'Error',
+        content: errorContent,
+        confirmText: 'OK',
+        width: '350px'
+      });
+      errorModal.open();
+    }
   }
 }

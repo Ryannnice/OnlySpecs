@@ -55,6 +55,7 @@ class App {
     this.fileExplorer = new FileExplorer(fileExplorerContainer, {
       onFileSelect: (filePath) => this.handleFileSelect(filePath),
       onFileDelete: (filePath) => this.handleFileDelete(filePath),
+      onOpenInTerminal: (filePath, isDirectory) => this.handleOpenInTerminal(filePath, isDirectory),
       onRootChange: (rootPath) => {
         this.projectRoot = rootPath;
         // Update cwd for all editor terminals
@@ -93,7 +94,6 @@ class App {
       onContentChange: (id, content) => this.handleContentChange(id, content),
       onGenerateFromSpecs: (id) => this.handleGenerateFromSpecs(id),
       onReviewAndTest: (id) => this.handleReviewAndTest(id),
-      onModifySpecsDoc: (id) => this.handleModifySpecsDoc(id),
       themeManager: this.themeManager,
     });
     this.editorContainer.setStateManager(this.stateManager);
@@ -388,6 +388,13 @@ class App {
       return;
     }
 
+    // Show modal dialog to get extra instructions
+    const extraInstructions = await this.showGenerateFromSpecsDialog();
+    if (extraInstructions === null) {
+      // User cancelled
+      return;
+    }
+
     // Check if code folder exists, create if not
     const existsResult = await window.electronAPI.pathExists(codeFolderPath);
     if (!existsResult.exists) {
@@ -414,11 +421,18 @@ class App {
     editorWithTerminal.setCwd(this.projectRoot);
 
     // Build the prompt text for interactive Claude terminal mode
+
     const specsFilePath = `${this.projectRoot}/${specsFileName}`;
-    const claudePrompt =
-      `Please read the ${specsFilePath} file and generate the implementation code for it at ${codeFolderPath}, ` +
+
+    let claudePrompt =
+      `Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, ` +
       `then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. ` +
       `Do not ask any questions to user. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately.`;
+
+    // Append extra instructions if provided
+    if (extraInstructions.trim()) {
+      claudePrompt += `\n\nAdditional instructions:\n${extraInstructions.trim()}`;
+    }
 
     console.log('[App] Running interactive Claude prompt:', claudePrompt);
 
@@ -435,18 +449,180 @@ class App {
     });
   }
 
-  private handleReviewAndTest(id: string): void {
+  private async handleReviewAndTest(id: string): Promise<void> {
     console.log('[App] Review and Test for editor:', id);
-    // TODO: Implement review and test functionality
-    // This could run tests, review code, etc.
-    alert('Review and Test functionality will be implemented here.\n\nEditor ID: ' + id);
+
+    // Get the editor state
+    const editor = this.stateManager.getEditor(id);
+    if (!editor) {
+      alert('Editor not found');
+      return;
+    }
+
+    // Check if we have a project root
+    if (!this.projectRoot) {
+      alert('Please open a project folder first');
+      return;
+    }
+
+    // Extract version from spec file name (e.g., specs_v0002.md -> 0002)
+    const specsPattern = /^specs_v(\d+)\.md$/i;
+    const match = editor.name.match(specsPattern);
+
+    if (!match) {
+      alert('This feature is only available for specs files (e.g., specs_v0001.md)');
+      return;
+    }
+
+    const version = match[1];
+    const codeFolderName = `code_v${version}`;
+    const codeFolderPath = `${this.projectRoot}/${codeFolderName}`;
+
+    if (!window.electronAPI) {
+      alert('electronAPI not available');
+      return;
+    }
+
+    // Check if code folder exists
+    const existsResult = await window.electronAPI.pathExists(codeFolderPath);
+    if (!existsResult.exists) {
+      alert('Please generate the code first');
+      return;
+    }
+
+    // Show dialog to get extra instructions (OK or Cancel both proceed, Cancel just means no extra instructions)
+    const extraInstructions = await this.showReviewAndTestDialog();
+
+    // Get the EditorWithTerminal instance to run command in terminal
+    const editorWithTerminal = this.editorContainer.getEditorWithTerminal(id);
+    if (!editorWithTerminal) {
+      alert('Editor terminal not found');
+      return;
+    }
+
+    // Build the prompt text for interactive Claude terminal mode
+    let claudePrompt =
+      `Please run build and run the code in the current folder, and create 100~1000 test cases, including unit test and integration test. ` +
+      `If there are any errors, please fix the code and run again until there is no error and all tests pass. ` +
+      `Please print the test results in the terminal. DO NOT ASK ANY QUESTIONS, JUST TEST THE CODE AND PRINT THE RESULTS. ` +
+      `When you finish, please exit immediately.`;
+
+    // Append extra instructions if provided
+    if (extraInstructions && extraInstructions.trim()) {
+      claudePrompt += `\n\nAdditional instructions:\n${extraInstructions.trim()}`;
+    }
+
+    console.log('[App] Running Review and Test prompt:', claudePrompt);
+
+    // Open a new terminal in the code folder and run Claude
+    const sessionId = await editorWithTerminal.runCommandInClaudeTerminal(claudePrompt, codeFolderPath);
+
+    // Listen for terminal exit to do final refresh
+    const exitUnsubscribe = window.electronAPI.onTerminalExit(sessionId, async () => {
+      exitUnsubscribe();
+      // Final refresh when command completes
+      if (this.fileExplorer) {
+        await this.fileExplorer.refresh();
+      }
+    });
   }
 
-  private handleModifySpecsDoc(id: string): void {
-    console.log('[App] Modify Specs Doc for editor:', id);
-    // TODO: Implement modify specs doc functionality
-    // This could open a modal to edit the specs document
-    alert('Modify Specs Doc functionality will be implemented here.\n\nEditor ID: ' + id);
+  private async showReviewAndTestDialog(): Promise<string | null> {
+    // Create modal content with textarea
+    const content = document.createElement('div');
+    content.className = 'generate-dialog-content';
+
+    const label = document.createElement('label');
+    label.textContent = 'Any additional instructions for testing the code?';
+    label.className = 'generate-label';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'generate-textarea';
+    textarea.placeholder = 'Enter additional testing instructions, e.g., "The private key for testing is 123456, please use this key to test the code"';
+    textarea.rows = 6;
+
+    content.appendChild(label);
+    content.appendChild(textarea);
+
+    let result: string | null = null;
+
+    const modal = new Modal({
+      title: 'Review and Test',
+      content,
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      width: '500px',
+      onConfirm: () => {
+        result = textarea.value;
+      },
+      onCancel: () => {
+        result = null; // null means proceed with base prompt
+      }
+    });
+
+    modal.open();
+
+    // Wait for modal to close
+    await new Promise<void>((resolve) => {
+      const checkClosed = setInterval(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (!overlay) {
+          clearInterval(checkClosed);
+          resolve();
+        }
+      }, 100);
+    });
+
+    return result;
+  }
+
+  private async showGenerateFromSpecsDialog(): Promise<string | null> {
+    // Create modal content with textarea
+    const content = document.createElement('div');
+    content.className = 'generate-dialog-content';
+
+    const label = document.createElement('label');
+    label.textContent = 'Any extra instructions or requirements as the prompt?';
+    label.className = 'generate-label';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'generate-textarea';
+    textarea.placeholder = 'Enter additional instructions, requirements, or context for the code generation...';
+    textarea.rows = 6;
+
+    content.appendChild(label);
+    content.appendChild(textarea);
+
+    let result: string | null = null;
+
+    const modal = new Modal({
+      title: 'Generate from Specs',
+      content,
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      width: '500px',
+      onConfirm: () => {
+        result = textarea.value;
+      },
+      onCancel: () => {
+        result = null;
+      }
+    });
+
+    modal.open();
+
+    // Wait for modal to close
+    await new Promise<void>((resolve) => {
+      const checkClosed = setInterval(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (!overlay) {
+          clearInterval(checkClosed);
+          resolve();
+        }
+      }, 100);
+    });
+
+    return result;
   }
 
   private async handleFileSelect(filePath: string): Promise<void> {
@@ -477,6 +653,29 @@ class App {
       await this.handleCloseTab(editorToDelete.id);
       console.log('[App] Closed editor for deleted file:', filePath);
     }
+  }
+
+  private handleOpenInTerminal(filePath: string, isDirectory: boolean): void {
+    // Get the directory path - if it's a file, use its parent directory
+    const cwd = isDirectory ? filePath : filePath.substring(0, filePath.lastIndexOf('/'));
+
+    // Get the active editor or the first editor to add a terminal
+    const editors = this.stateManager.getAllEditors();
+    if (editors.length === 0) {
+      console.warn('[App] No editor available to open terminal');
+      return;
+    }
+
+    // Use the active editor if set, otherwise use the first one
+    const targetEditor = this.activeEditorId ? editors.find(e => e.id === this.activeEditorId) : editors[0];
+    if (!targetEditor) {
+      console.warn('[App] No target editor found');
+      return;
+    }
+
+    // Open a new terminal in the editor with the specified cwd
+    this.editorContainer.openTerminalInEditor(targetEditor.id, cwd);
+    console.log('[App] Opened terminal at:', cwd);
   }
 
   private handleContentChange(id: string, content: string): void {
@@ -785,8 +984,10 @@ class App {
     // Hide form elements and show processing indicator
     selectionSection.style.display = 'none';
     githubSection.style.display = 'none';
-    if (modalFooter) {
-      modalFooter.style.display = 'none';
+    // Disable the Import button instead of hiding the footer
+    if (this.currentModal) {
+      this.currentModal.setConfirmButtonDisabled(true);
+      this.currentModal.setConfirmButtonText('Importing...');
     }
     processingIndicator.style.display = 'block';
 
@@ -901,17 +1102,137 @@ class App {
         // Add terminal to modal content
         content.appendChild(terminalContainer);
 
-        // Create terminal instance
+        // Create terminal instance with claude command
         this.githubImportTerminal = new Terminal(
           terminalContainer,
           this.themeManager.getCurrentTheme(),
           {
             showHeader: true,
+            cwd: result.repoPath,
+            command: 'claude',
+            args: ['--dangerously-skip-permissions'],
           }
         );
 
         // Store repo path for later use
         (terminalContainer as any).dataset.repoPath = result.repoPath;
+
+        const outputPath = `${result.repoPath}/output_specs.md`;
+        let outputLoaded = false; // Flag to prevent duplicate loading
+        let lastFileSize: number | null = null;
+        let stableStartTime: number | null = null;
+        let pollingIntervalId: ReturnType<typeof setInterval> | null = null;
+
+        // Helper function to load output file and close modal
+        const loadOutputAndClose = async (source: string) => {
+          if (outputLoaded) {
+            console.log(`[GitHub Import] Output already loaded, skipping (${source})`);
+            return;
+          }
+          outputLoaded = true;
+
+          console.log(`[GitHub Import] Loading output file (${source})`);
+          console.log('[GitHub Import] Reading output from:', outputPath);
+
+          // Stop polling
+          if (pollingIntervalId) {
+            clearInterval(pollingIntervalId);
+            pollingIntervalId = null;
+          }
+
+          if (window.electronAPI) {
+            const fileResult = await window.electronAPI.readFile(outputPath);
+
+            if (fileResult.success && fileResult.content) {
+              console.log('[GitHub Import] Output file read successfully, length:', fileResult.content.length);
+
+              // Create new editor with the specs
+              const newEditorName = `Specs - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+              const newEditor = await this.stateManager.createEditor(newEditorName);
+              this.stateManager.updateEditorContent(newEditor.id, fileResult.content);
+
+              // Re-enable the Import button
+              if (this.currentModal) {
+                this.currentModal.setConfirmButtonDisabled(false);
+                this.currentModal.setConfirmButtonText('Import');
+              }
+
+              // Close the modal and clean up
+              if (this.currentModal) {
+                this.currentModal.close();
+                this.currentModal = null;
+              }
+
+              // Clean up terminal
+              if (this.githubImportTerminal) {
+                this.githubImportTerminal.dispose();
+                this.githubImportTerminal = null;
+              }
+            } else {
+              console.error('[GitHub Import] Failed to read output file:', fileResult.error);
+              const timestamp = new Date().toLocaleTimeString();
+              if (processingLog) {
+                processingLog.style.display = 'block';
+                processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">Failed to read output_specs.md: ${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
+                processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Please check the terminal output above for any errors.</span></div>`;
+                processingLog.scrollTop = processingLog.scrollHeight;
+              }
+              outputLoaded = false; // Allow retry if read failed
+            }
+          }
+        };
+
+        // Poll for output_specs.md file - check if file exists and is stable (not modified for 30 seconds)
+        pollingIntervalId = setInterval(async () => {
+          if (outputLoaded || !window.electronAPI) return;
+
+          try {
+            const existsResult = await window.electronAPI.pathExists(outputPath);
+
+            if (existsResult.exists) {
+              const fileResult = await window.electronAPI.readFile(outputPath);
+
+              if (fileResult.success && fileResult.content) {
+                const currentSize = fileResult.content.length;
+                const now = Date.now();
+
+                if (lastFileSize !== null && currentSize === lastFileSize) {
+                  // File size hasn't changed since last check
+                  if (stableStartTime === null) {
+                    stableStartTime = now;
+                    console.log('[GitHub Import] File size stable, starting 30s timer...');
+                    const timestamp = new Date().toLocaleTimeString();
+                    if (processingLog) {
+                      processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Output file detected, waiting for completion (30s stability check)...</span></div>`;
+                      processingLog.scrollTop = processingLog.scrollHeight;
+                    }
+                  } else {
+                    const stableDuration = now - stableStartTime;
+                    console.log(`[GitHub Import] File stable for ${Math.round(stableDuration / 1000)}s`);
+
+                    if (stableDuration >= 30000) {
+                      // File has been stable for 30 seconds
+                      console.log('[GitHub Import] Output file stable for 30 seconds, loading...');
+                      const timestamp = new Date().toLocaleTimeString();
+                      if (processingLog) {
+                        processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Output file complete. Loading...</span></div>`;
+                        processingLog.scrollTop = processingLog.scrollHeight;
+                      }
+                      await loadOutputAndClose('file-stable-30s');
+                    }
+                  }
+                } else {
+                  // File size changed or first check, reset stability timer
+                  stableStartTime = null;
+                }
+
+                lastFileSize = currentSize;
+              }
+            }
+          } catch (err) {
+            console.error('[GitHub Import] Error polling for output file:', err);
+          }
+        }, 5000); // Check every 5 seconds
 
         // Listen for terminal exit to read the output file
         const terminalExitUnsubscribe = window.electronAPI.onTerminalExit(
@@ -919,41 +1240,17 @@ class App {
           async (exitCode: number, signal: number) => {
             console.log('[GitHub Import] Terminal exited with code:', exitCode, 'signal:', signal);
 
-            // Read the output file
-            const outputPath = `${result.repoPath}/output_specs.md`;
-            console.log('[GitHub Import] Reading output from:', outputPath);
+            // Wait a moment for any final file writes
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            if (window.electronAPI) {
-              const fileResult = await window.electronAPI.readFile(outputPath);
+            // Try to load the output file
+            await loadOutputAndClose('terminal-exit');
 
-              if (fileResult.success && fileResult.content) {
-                console.log('[GitHub Import] Output file read successfully, length:', fileResult.content.length);
-
-                // Create new editor with the specs immediately
-                const newEditorName = `Specs - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
-                const newEditor = await this.stateManager.createEditor(newEditorName);
-                this.stateManager.updateEditorContent(newEditor.id, fileResult.content);
-
-                // Close the modal and clean up immediately
-                if (this.currentModal) {
-                  this.currentModal.close();
-                  this.currentModal = null;
-                }
-
-                // Clean up terminal
-                if (this.githubImportTerminal) {
-                  this.githubImportTerminal.dispose();
-                  this.githubImportTerminal = null;
-                }
-              } else {
-                console.error('[GitHub Import] Failed to read output file:', fileResult.error);
-                const timestamp = new Date().toLocaleTimeString();
-                if (processingLog) {
-                  processingLog.style.display = 'block';
-                  processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">Failed to read output_specs.md: ${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
-                  processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Please check the terminal output above for any errors.</span></div>`;
-                  processingLog.scrollTop = processingLog.scrollHeight;
-                }
+            // If output wasn't loaded, re-enable the button
+            if (!outputLoaded) {
+              if (this.currentModal) {
+                this.currentModal.setConfirmButtonDisabled(false);
+                this.currentModal.setConfirmButtonText('Import');
               }
             }
 
@@ -961,14 +1258,31 @@ class App {
           }
         );
 
-        // Wait a bit for terminal to initialize, then send commands
+        // Wait for terminal to be ready, then send the prompt
         setTimeout(async () => {
-          // CD to the repo directory and run claude, then exit automatically
-          const commands = `cd "${result.repoPath}" && claude --dangerously-skip-permissions -p "please read the task doc at summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately."`;
+          if (!this.githubImportTerminal) return;
+
+          // Wait for terminal to be ready
+          await this.githubImportTerminal.waitUntilReady();
+          await this.githubImportTerminal.waitUntilPromptReady();
+
+          // First, press Enter to confirm "Yes, I trust this folder" safety check
+          // The safety check appears when Claude starts in a new directory
           if (window.electronAPI) {
-            await window.electronAPI.writeTerminal(this.githubImportTerminal!.sessionId, commands);
+            // Send Enter to confirm the default option (1. Yes, I trust this folder)
+            await window.electronAPI.writeTerminal(this.githubImportTerminal.sessionId, '\r');
+
+            // Wait for the safety check to be processed and Claude to be ready
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
-        }, 1000);
+
+          // Send the prompt text to Claude
+          const promptText = `please read the task doc at ${result.repoPath}/summarize_specs_instructions.md and output the final markdown doc. Do not ask any questions. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, shutdown this claude code program immediately.`;
+
+          if (window.electronAPI) {
+            await window.electronAPI.runTerminalCommand(this.githubImportTerminal.sessionId, promptText);
+          }
+        }, 500);
 
       } else if (result.success && result.output) {
         console.log('[GitHub Import] Success! Showing results...');
@@ -995,6 +1309,12 @@ class App {
       }
 
       progressUnsubscribe();
+
+      // Re-enable the Import button on error
+      if (this.currentModal) {
+        this.currentModal.setConfirmButtonDisabled(false);
+        this.currentModal.setConfirmButtonText('Import');
+      }
 
       this.showErrorInModal(
         `Error: ${error.message || 'Unknown error'}`,

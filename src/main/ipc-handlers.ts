@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, clipboard, shell, app } from 'electron';
 import { createRequire } from 'module';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -691,6 +691,40 @@ export function registerIpcHandlers() {
       return { exists: true };
     } catch {
       return { exists: false };
+    }
+  });
+
+  // Rename file or folder
+  ipcMain.handle('fs:rename', async (_event, oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fs.rename(oldPath, newPath);
+      console.log('[FS] Renamed:', oldPath, '->', newPath);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[FS] Error renaming:', error);
+      return { success: false, error: error.message || 'Failed to rename' };
+    }
+  });
+
+  // Reveal in Finder/Explorer
+  ipcMain.handle('fs:revealInFinder', async (_event, filePath: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      shell.showItemInFolder(filePath);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[FS] Error revealing in finder:', error);
+      return { success: false, error: error.message || 'Failed to reveal in finder' };
+    }
+  });
+
+  // Copy path to clipboard
+  ipcMain.handle('fs:copyPath', async (_event, filePath: string): Promise<{ success: boolean }> => {
+    try {
+      clipboard.writeText(filePath);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[FS] Error copying path:', error);
+      return { success: false };
     }
   });
 

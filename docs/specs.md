@@ -51,3 +51,23 @@ a. check if the corresponding code folder exists for the current opened spec fil
 b. run the command in the terminal of the editor below, for example the root folder is /path/to/project, the current opened spec file is specs_v0002.md, then run the command:
 
 cd /path/to/project && claude --dangerously-skip-permissions -p "Please read the specs_v0002.md file and generate the implementation code for it at /path/to/project/code_v0002, then save the code in the code_v0002. DO NOT ASK ANY QUESTIONS, JUST OUTPUT THE CODE" && exit
+
+7. when click the "Review and Test" button:
+
+a. check if the corresponding code folder exists for the current opened spec file. if not, show an error message "Please generate the code first".
+
+b. popup a dialog with textbox and ask user to input any additional instructions for testing the code. for example, user can input "The private key for testing is 123456, please use this key to test the code".
+
+If user click "OK", and the text box is not empty, then append the user input instructions to the prompt below.
+
+If user click "OK", and the text box is empty, then just use the prompt below.
+
+If user click "Cancel", then just use the prompt below.
+
+c. create a new terminal process in the root folder of the project (code folder)
+
+d. Run Claude in interactive terminal mode and inject the prompt into the session. Here is the prompt:
+
+Please run build and run the code in the current folder, and craete 100~1000 test cases, including unit test and integration test. If there are any errors, please fix the code and run again until there is no error and all tests pass. Please print the test results in the terminal. DO NOT ASK ANY QUESTIONS, JUST TEST THE CODE AND PRINT THE RESULTS. When you finish, please exit immediately.
+
+If user input additional instructions, then just append the user input instructions to the end of the above prompt.
