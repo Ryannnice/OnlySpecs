@@ -124,6 +124,18 @@ const electronAPI = {
   // Check if path exists
   pathExists: (path: string): Promise<{ exists: boolean }> =>
     ipcRenderer.invoke('fs:exists', path),
+
+  // Rename file or folder
+  renamePath: (oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fs:rename', oldPath, newPath),
+
+  // Reveal in Finder/Explorer
+  revealInFinder: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fs:revealInFinder', filePath),
+
+  // Copy path to clipboard
+  copyPath: (filePath: string): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('fs:copyPath', filePath),
 };
 
 export interface ElectronAPIType {
@@ -155,6 +167,9 @@ export interface ElectronAPIType {
   deleteFolder(folderPath: string): Promise<{ success: boolean; error?: string }>;
   createDirectory(dirPath: string): Promise<{ success: boolean; error?: string }>;
   pathExists(path: string): Promise<{ exists: boolean }>;
+  renamePath(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }>;
+  revealInFinder(filePath: string): Promise<{ success: boolean; error?: string }>;
+  copyPath(filePath: string): Promise<{ success: boolean }>;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

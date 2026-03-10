@@ -1823,3 +1823,101 @@ body {
 .file-tree-item.active .file-icon-default {
   color: white;
 }
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.95);
+  transition: opacity 0.1s, transform 0.1s, visibility 0.1s;
+}
+
+.context-menu.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.context-menu-item svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.context-menu-item:hover svg {
+  color: var(--text-primary);
+}
+
+.context-menu-item-danger {
+  color: #f48771;
+}
+
+.context-menu-item-danger svg {
+  color: #f48771;
+}
+
+.context-menu-item-danger:hover {
+  background: rgba(244, 135, 113, 0.1);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+/* Rename Dialog */
+.rename-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rename-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.rename-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.rename-input:focus {
+  border-color: var(--accent-color);
+}
+
+.rename-input::placeholder {
+  color: var(--text-secondary);
+}

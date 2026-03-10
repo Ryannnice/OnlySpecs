@@ -8,7 +8,6 @@ export interface EditorWithTerminalOptions {
   onPreviewToggle: (id: string) => void;
   onGenerateFromSpecs?: (id: string) => void;
   onReviewAndTest?: (id: string) => void;
-  onModifySpecsDoc?: (id: string) => void;
   themeManager: ThemeManager;
   isCompareDisabled: boolean;
   isCompareSelected: boolean;
@@ -51,7 +50,6 @@ export class EditorWithTerminal {
   private onPreviewToggle: (id: string) => void;
   private onGenerateFromSpecs?: (id: string) => void;
   private onReviewAndTest?: (id: string) => void;
-  private onModifySpecsDoc?: (id: string) => void;
   private themeManager: ThemeManager;
   private monacoInstance: any = null;
   private diffEditorInstance: any = null;
@@ -100,7 +98,6 @@ export class EditorWithTerminal {
     this.onPreviewToggle = options.onPreviewToggle;
     this.onGenerateFromSpecs = options.onGenerateFromSpecs;
     this.onReviewAndTest = options.onReviewAndTest;
-    this.onModifySpecsDoc = options.onModifySpecsDoc;
     this.themeManager = options.themeManager;
     this.editorId = id;
 
@@ -171,23 +168,6 @@ export class EditorWithTerminal {
         }
       });
       actionButtonsSection.appendChild(reviewBtn);
-    }
-
-    if (this.onModifySpecsDoc) {
-      const modifyBtn = document.createElement('button');
-      modifyBtn.className = 'action-btn action-btn-modify';
-      modifyBtn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M13.5 1a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM11 2h3v1h-1v4l-1 2v5h-2v-5l-1-2V3h-1V2h3zM3.5 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM1 5h3v1H3v4l-1 2v5H0v-5l-1-2V6h1V5zm0 8H0v1h1v-1zm10 0h-1v1h1v-1z"/>
-        </svg>
-        <span>Modify Specs Doc</span>
-      `;
-      modifyBtn.addEventListener('click', () => {
-        if (this.onModifySpecsDoc) {
-          this.onModifySpecsDoc(id);
-        }
-      });
-      actionButtonsSection.appendChild(modifyBtn);
     }
 
     // Compare and Preview checkbox section (at the top)
@@ -862,6 +842,35 @@ export class EditorWithTerminal {
         theme: theme === 'dark' ? 'vs-dark' : 'vs'
       });
     }
+  }
+
+  openTerminalWithCwd(cwd: string): void {
+    // Expand terminal panel if not already expanded
+    if (!this.isTerminalExpanded) {
+      this.isTerminalExpanded = true;
+      EditorWithTerminal.terminalStates.set(this.editorId, true);
+
+      // Update button
+      this.terminalToggle.title = 'Hide Terminal';
+      this.terminalToggle.classList.add('active');
+
+      // Update icon rotation
+      const icon = this.terminalToggle.querySelector('svg');
+      if (icon) {
+        icon.style.transform = 'rotate(180deg)';
+      }
+
+      // Show terminals container and add button
+      this.terminalsContainer.style.display = 'flex';
+      this.terminalResizeHandle.style.display = 'block';
+      this.addTerminalBtn.style.display = 'flex';
+
+      // Trigger resize event for Monaco to adjust
+      window.dispatchEvent(new Event('resize'));
+    }
+
+    // Add a new terminal with the specified cwd
+    this.addNewTerminal(cwd);
   }
 
   dispose(): void {

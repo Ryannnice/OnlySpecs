@@ -55,6 +55,7 @@ class App {
     this.fileExplorer = new FileExplorer(fileExplorerContainer, {
       onFileSelect: (filePath) => this.handleFileSelect(filePath),
       onFileDelete: (filePath) => this.handleFileDelete(filePath),
+      onOpenInTerminal: (filePath, isDirectory) => this.handleOpenInTerminal(filePath, isDirectory),
       onRootChange: (rootPath) => {
         this.projectRoot = rootPath;
         // Update cwd for all editor terminals
@@ -93,7 +94,6 @@ class App {
       onContentChange: (id, content) => this.handleContentChange(id, content),
       onGenerateFromSpecs: (id) => this.handleGenerateFromSpecs(id),
       onReviewAndTest: (id) => this.handleReviewAndTest(id),
-      onModifySpecsDoc: (id) => this.handleModifySpecsDoc(id),
       themeManager: this.themeManager,
     });
     this.editorContainer.setStateManager(this.stateManager);
@@ -441,13 +441,6 @@ class App {
     alert('Review and Test functionality will be implemented here.\n\nEditor ID: ' + id);
   }
 
-  private handleModifySpecsDoc(id: string): void {
-    console.log('[App] Modify Specs Doc for editor:', id);
-    // TODO: Implement modify specs doc functionality
-    // This could open a modal to edit the specs document
-    alert('Modify Specs Doc functionality will be implemented here.\n\nEditor ID: ' + id);
-  }
-
   private async handleFileSelect(filePath: string): Promise<void> {
     if (!window.electronAPI) {
       console.error('[App] electronAPI not available');
@@ -476,6 +469,29 @@ class App {
       await this.handleCloseTab(editorToDelete.id);
       console.log('[App] Closed editor for deleted file:', filePath);
     }
+  }
+
+  private handleOpenInTerminal(filePath: string, isDirectory: boolean): void {
+    // Get the directory path - if it's a file, use its parent directory
+    const cwd = isDirectory ? filePath : filePath.substring(0, filePath.lastIndexOf('/'));
+
+    // Get the active editor or the first editor to add a terminal
+    const editors = this.stateManager.getAllEditors();
+    if (editors.length === 0) {
+      console.warn('[App] No editor available to open terminal');
+      return;
+    }
+
+    // Use the active editor if set, otherwise use the first one
+    const targetEditor = this.activeEditorId ? editors.find(e => e.id === this.activeEditorId) : editors[0];
+    if (!targetEditor) {
+      console.warn('[App] No target editor found');
+      return;
+    }
+
+    // Open a new terminal in the editor with the specified cwd
+    this.editorContainer.openTerminalInEditor(targetEditor.id, cwd);
+    console.log('[App] Opened terminal at:', cwd);
   }
 
   private handleContentChange(id: string, content: string): void {
