@@ -1921,3 +1921,40 @@ body {
 .rename-input::placeholder {
   color: var(--text-secondary);
 }
+
+/* Generate from Specs Dialog */
+.generate-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.generate-label {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.generate-textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.generate-textarea:focus {
+  border-color: var(--accent-color);
+}
+
+.generate-textarea::placeholder {
+  color: var(--text-secondary);
+}

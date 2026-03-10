@@ -388,6 +388,13 @@ class App {
       return;
     }
 
+    // Show modal dialog to get extra instructions
+    const extraInstructions = await this.showGenerateFromSpecsDialog();
+    if (extraInstructions === null) {
+      // User cancelled
+      return;
+    }
+
     // Check if code folder exists, create if not
     const existsResult = await window.electronAPI.pathExists(codeFolderPath);
     if (!existsResult.exists) {
@@ -414,10 +421,15 @@ class App {
     editorWithTerminal.setCwd(this.projectRoot);
 
     // Build the prompt text for interactive Claude terminal mode
-    const claudePrompt =
+    let claudePrompt =
       `Please read the ${specsFileName} file and generate the implementation code for it at ${codeFolderPath}, ` +
       `then save the code in the ${codeFolderName}. Do not leave any blank. Please implement ALL codes, test, docs and readme as much as possible. ` +
       `Do not ask any questions to user. If any decisions need to be made, make them autonomously and DO NOT ASK USER. Do the task in headless mode. When the task is done, exit immediately.`;
+
+    // Append extra instructions if provided
+    if (extraInstructions.trim()) {
+      claudePrompt += `\n\nAdditional instructions:\n${extraInstructions.trim()}`;
+    }
 
     console.log('[App] Running interactive Claude prompt:', claudePrompt);
 
@@ -434,11 +446,180 @@ class App {
     });
   }
 
-  private handleReviewAndTest(id: string): void {
+  private async handleReviewAndTest(id: string): Promise<void> {
     console.log('[App] Review and Test for editor:', id);
-    // TODO: Implement review and test functionality
-    // This could run tests, review code, etc.
-    alert('Review and Test functionality will be implemented here.\n\nEditor ID: ' + id);
+
+    // Get the editor state
+    const editor = this.stateManager.getEditor(id);
+    if (!editor) {
+      alert('Editor not found');
+      return;
+    }
+
+    // Check if we have a project root
+    if (!this.projectRoot) {
+      alert('Please open a project folder first');
+      return;
+    }
+
+    // Extract version from spec file name (e.g., specs_v0002.md -> 0002)
+    const specsPattern = /^specs_v(\d+)\.md$/i;
+    const match = editor.name.match(specsPattern);
+
+    if (!match) {
+      alert('This feature is only available for specs files (e.g., specs_v0001.md)');
+      return;
+    }
+
+    const version = match[1];
+    const codeFolderName = `code_v${version}`;
+    const codeFolderPath = `${this.projectRoot}/${codeFolderName}`;
+
+    if (!window.electronAPI) {
+      alert('electronAPI not available');
+      return;
+    }
+
+    // Check if code folder exists
+    const existsResult = await window.electronAPI.pathExists(codeFolderPath);
+    if (!existsResult.exists) {
+      alert('Please generate the code first');
+      return;
+    }
+
+    // Show dialog to get extra instructions (OK or Cancel both proceed, Cancel just means no extra instructions)
+    const extraInstructions = await this.showReviewAndTestDialog();
+
+    // Get the EditorWithTerminal instance to run command in terminal
+    const editorWithTerminal = this.editorContainer.getEditorWithTerminal(id);
+    if (!editorWithTerminal) {
+      alert('Editor terminal not found');
+      return;
+    }
+
+    // Build the prompt text for interactive Claude terminal mode
+    let claudePrompt =
+      `Please run build and run the code in the current folder, and create 100~1000 test cases, including unit test and integration test. ` +
+      `If there are any errors, please fix the code and run again until there is no error and all tests pass. ` +
+      `Please print the test results in the terminal. DO NOT ASK ANY QUESTIONS, JUST TEST THE CODE AND PRINT THE RESULTS. ` +
+      `When you finish, please exit immediately.`;
+
+    // Append extra instructions if provided
+    if (extraInstructions && extraInstructions.trim()) {
+      claudePrompt += `\n\nAdditional instructions:\n${extraInstructions.trim()}`;
+    }
+
+    console.log('[App] Running Review and Test prompt:', claudePrompt);
+
+    // Open a new terminal in the code folder and run Claude
+    const sessionId = await editorWithTerminal.runCommandInClaudeTerminal(claudePrompt, codeFolderPath);
+
+    // Listen for terminal exit to do final refresh
+    const exitUnsubscribe = window.electronAPI.onTerminalExit(sessionId, async () => {
+      exitUnsubscribe();
+      // Final refresh when command completes
+      if (this.fileExplorer) {
+        await this.fileExplorer.refresh();
+      }
+    });
+  }
+
+  private async showReviewAndTestDialog(): Promise<string | null> {
+    // Create modal content with textarea
+    const content = document.createElement('div');
+    content.className = 'generate-dialog-content';
+
+    const label = document.createElement('label');
+    label.textContent = 'Any additional instructions for testing the code?';
+    label.className = 'generate-label';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'generate-textarea';
+    textarea.placeholder = 'Enter additional testing instructions, e.g., "The private key for testing is 123456, please use this key to test the code"';
+    textarea.rows = 6;
+
+    content.appendChild(label);
+    content.appendChild(textarea);
+
+    let result: string | null = null;
+
+    const modal = new Modal({
+      title: 'Review and Test',
+      content,
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      width: '500px',
+      onConfirm: () => {
+        result = textarea.value;
+      },
+      onCancel: () => {
+        result = null; // null means proceed with base prompt
+      }
+    });
+
+    modal.open();
+
+    // Wait for modal to close
+    await new Promise<void>((resolve) => {
+      const checkClosed = setInterval(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (!overlay) {
+          clearInterval(checkClosed);
+          resolve();
+        }
+      }, 100);
+    });
+
+    return result;
+  }
+
+  private async showGenerateFromSpecsDialog(): Promise<string | null> {
+    // Create modal content with textarea
+    const content = document.createElement('div');
+    content.className = 'generate-dialog-content';
+
+    const label = document.createElement('label');
+    label.textContent = 'Any extra instructions or requirements as the prompt?';
+    label.className = 'generate-label';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'generate-textarea';
+    textarea.placeholder = 'Enter additional instructions, requirements, or context for the code generation...';
+    textarea.rows = 6;
+
+    content.appendChild(label);
+    content.appendChild(textarea);
+
+    let result: string | null = null;
+
+    const modal = new Modal({
+      title: 'Generate from Specs',
+      content,
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      width: '500px',
+      onConfirm: () => {
+        result = textarea.value;
+      },
+      onCancel: () => {
+        result = null;
+      }
+    });
+
+    modal.open();
+
+    // Wait for modal to close
+    await new Promise<void>((resolve) => {
+      const checkClosed = setInterval(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (!overlay) {
+          clearInterval(checkClosed);
+          resolve();
+        }
+      }, 100);
+    });
+
+    return result;
   }
 
   private async handleFileSelect(filePath: string): Promise<void> {
