@@ -74,7 +74,7 @@ return new Promise((resolve, reject) => {
     })
 })
 ```
-
+```
 ┌─────────────┐
 │ run() 调用  │
 │ await engine│
@@ -97,3 +97,4 @@ if(exitCode==0) resolve()  else reject(error)
       │
       ▼
 Promise 状态变更 → 外层 await/then/catch 收到结果
+```
