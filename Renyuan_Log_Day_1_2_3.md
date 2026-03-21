@@ -1,3 +1,6 @@
+# **稔远的个人学习要点；仅个人纪录供参考，不含专业知识细节**
+
+
 # ***2025.3.19***
 
 ## 知识学习
@@ -23,8 +26,21 @@ npm = Node Package Manager（Node.js 包管理器）
 第一次实习，第一次接触偏工程的项目：不同于科研的是，可行性/整体模块的缝合、运行似乎比细致的优化更重要
 
 清华的开源教育项目未采用前后端分离架构
-使用.json格式请求体完成信息传递
-前端直接通过函数调用REST API
+
+使用.json格式请求体完成数据/信息传递
+
+前端直接通过函数调用REST API:
+```
+ fastapi_backend/                                           
+    └── static/                                              
+        ├── index.html        # 主页（需求输入 + 设置）      
+        ├── generate.html     # 生成流程页（SSE 大纲流 + 进度）
+        ├── classroom.html    # 课堂播放页（幻灯片/测验/聊天）
+        ├── app.js            # 全局工具：API 调用、设置存储、路由                                     
+        ├── generate.js       # 生成流程逻辑                 
+        ├── classroom.js      # 课堂播放逻辑（幻灯片渲染、测验、聊天）                   
+        └── style.css         # 全局样式     
+```
 
 
 ## 实践
@@ -98,3 +114,23 @@ if(exitCode==0) resolve()  else reject(error)
       ▼
 Promise 状态变更 → 外层 await/then/catch 收到结果
 ```
+
+#### Shim 
+
+是一种兼容层或适配器，用于在不修改原有代码的情况下，让新旧接口或系统之间能够协同工作
+
+这很适用于最小化更改，让该开源项目快速应用于我们的项目中，以此为起点吧
+
+#### Node.js Web 服务器
+
+Node.js 是一个运行环境，可以用 JavaScript 写服务端程序
+
+"Node.js Web 服务器"就是用 Node.js 写的 HTTP 服务，比如用 Express、Fastify、Koa 等框架搭建的后端，和阿里云服务器不冲突
+
+```
+阿里云 ECS（服务器硬件/系统）
+    └── Nginx（反向代理，监听 80/443 端口）
+          └── Node.js 进程（监听 3000 端口）
+                └── 你的业务代码      
+```
+
