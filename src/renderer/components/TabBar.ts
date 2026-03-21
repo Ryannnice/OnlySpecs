@@ -40,7 +40,7 @@ export class TabBar {
     this.newTabBtn = document.createElement('button');
     this.newTabBtn.className = 'new-tab-btn';
     this.newTabBtn.textContent = '+';
-    this.newTabBtn.title = 'Open next specs version';
+    this.newTabBtn.title = '打开下一个版本';
     this.newTabBtn.addEventListener('click', () => this.onNewTab());
     this.container.appendChild(this.newTabBtn);
 
@@ -93,7 +93,7 @@ export class TabBar {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'tab-close';
     closeBtn.innerHTML = '&times;';
-    closeBtn.title = 'Close tab';
+    closeBtn.title = '关闭标签页';
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onCloseTab(editor.id);
@@ -158,7 +158,7 @@ export class TabBar {
     dialog.className = 'rename-dialog';
 
     const label = document.createElement('label');
-    label.textContent = 'Rename tab:';
+    label.textContent = '重命名标签页：';
     dialog.appendChild(label);
 
     const input = document.createElement('input');
@@ -170,11 +170,11 @@ export class TabBar {
     buttons.className = 'rename-buttons';
 
     const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
+    cancelBtn.textContent = '取消';
     cancelBtn.addEventListener('click', () => modal.remove());
 
     const renameBtn = document.createElement('button');
-    renameBtn.textContent = 'Rename';
+    renameBtn.textContent = '重命名';
     renameBtn.className = 'primary';
     renameBtn.addEventListener('click', () => {
       const newName = input.value.trim();

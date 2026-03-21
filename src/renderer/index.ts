@@ -359,13 +359,13 @@ class App {
     // Get the editor state
     const editor = this.stateManager.getEditor(id);
     if (!editor) {
-      alert('Editor not found');
+      alert('未找到编辑器');
       return;
     }
 
     // Check if we have a project root
     if (!this.projectRoot) {
-      alert('Please open a project folder first');
+      alert('请先打开项目文件夹');
       return;
     }
 
@@ -374,7 +374,7 @@ class App {
     const match = editor.name.match(specsPattern);
 
     if (!match) {
-      alert('This feature is only available for specs files (e.g., specs_v0001.md)');
+      alert('此功能仅适用于规格文件（如 specs_v0001.md）');
       return;
     }
 
@@ -384,7 +384,7 @@ class App {
     const specsFileName = editor.name;
 
     if (!window.electronAPI) {
-      alert('electronAPI not available');
+      alert('electronAPI 不可用');
       return;
     }
 
@@ -401,7 +401,7 @@ class App {
       console.log('[App] Creating code folder:', codeFolderPath);
       const createResult = await window.electronAPI.createDirectory(codeFolderPath);
       if (!createResult.success) {
-        alert(`Failed to create code folder: ${createResult.error}`);
+        alert(`创建代码文件夹失败：${createResult.error}`);
         return;
       }
       // Refresh file explorer to show the new folder
@@ -413,7 +413,7 @@ class App {
     // Get the EditorWithTerminal instance to run command in terminal
     const editorWithTerminal = this.editorContainer.getEditorWithTerminal(id);
     if (!editorWithTerminal) {
-      alert('Editor terminal not found');
+      alert('未找到编辑器终端');
       return;
     }
 
@@ -455,13 +455,13 @@ class App {
     // Get the editor state
     const editor = this.stateManager.getEditor(id);
     if (!editor) {
-      alert('Editor not found');
+      alert('未找到编辑器');
       return;
     }
 
     // Check if we have a project root
     if (!this.projectRoot) {
-      alert('Please open a project folder first');
+      alert('请先打开项目文件夹');
       return;
     }
 
@@ -470,7 +470,7 @@ class App {
     const match = editor.name.match(specsPattern);
 
     if (!match) {
-      alert('This feature is only available for specs files (e.g., specs_v0001.md)');
+      alert('此功能仅适用于规格文件（如 specs_v0001.md）');
       return;
     }
 
@@ -479,14 +479,14 @@ class App {
     const codeFolderPath = `${this.projectRoot}/${codeFolderName}`;
 
     if (!window.electronAPI) {
-      alert('electronAPI not available');
+      alert('electronAPI 不可用');
       return;
     }
 
     // Check if code folder exists
     const existsResult = await window.electronAPI.pathExists(codeFolderPath);
     if (!existsResult.exists) {
-      alert('Please generate the code first');
+      alert('请先生成代码');
       return;
     }
 
@@ -496,7 +496,7 @@ class App {
     // Get the EditorWithTerminal instance to run command in terminal
     const editorWithTerminal = this.editorContainer.getEditorWithTerminal(id);
     if (!editorWithTerminal) {
-      alert('Editor terminal not found');
+      alert('未找到编辑器终端');
       return;
     }
 
@@ -533,12 +533,12 @@ class App {
     content.className = 'generate-dialog-content';
 
     const label = document.createElement('label');
-    label.textContent = 'Any additional instructions for testing the code?';
+    label.textContent = '有其他测试说明吗？';
     label.className = 'generate-label';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'generate-textarea';
-    textarea.placeholder = 'Enter additional testing instructions, e.g., "The private key for testing is 123456, please use this key to test the code"';
+    textarea.placeholder = '输入额外的测试说明，例如：测试私钥为 123456...';
     textarea.rows = 6;
 
     content.appendChild(label);
@@ -547,10 +547,10 @@ class App {
     let result: string | null = null;
 
     const modal = new Modal({
-      title: 'Review and Test',
+      title: '审查与测试',
       content,
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: '确定',
+      cancelText: '取消',
       width: '500px',
       onConfirm: () => {
         result = textarea.value;
@@ -582,12 +582,12 @@ class App {
     content.className = 'generate-dialog-content';
 
     const label = document.createElement('label');
-    label.textContent = 'Any extra instructions or requirements as the prompt?';
+    label.textContent = '有额外的生成说明或要求吗？';
     label.className = 'generate-label';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'generate-textarea';
-    textarea.placeholder = 'Enter additional instructions, requirements, or context for the code generation...';
+    textarea.placeholder = '输入额外的说明、要求或上下文...';
     textarea.rows = 6;
 
     content.appendChild(label);
@@ -596,10 +596,10 @@ class App {
     let result: string | null = null;
 
     const modal = new Modal({
-      title: 'Generate from Specs',
+      title: '从规格生成代码',
       content,
-      confirmText: 'OK',
-      cancelText: 'Cancel',
+      confirmText: '确定',
+      cancelText: '取消',
       width: '500px',
       onConfirm: () => {
         result = textarea.value;
@@ -701,7 +701,7 @@ class App {
     const result = await window.electronAPI.createProject();
     if (!result.success || !result.projectPath) {
       if (result.error && result.error !== 'No directory selected') {
-        alert(`Failed to create project: ${result.error}`);
+        alert(`创建项目失败：${result.error}`);
       }
       return;
     }
@@ -779,34 +779,34 @@ class App {
     const content = document.createElement('div');
     content.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <p style="color: var(--text-secondary); margin-bottom: 16px;">Select a source to import specifications:</p>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">选择规格文档来源：</p>
         <div id="spec-source-selection" style="display: flex; flex-direction: column; gap: 12px;">
           <label class="spec-source-option" data-source="github">
             <input type="radio" name="spec-source" value="github" style="margin: 0;">
             <div>
-              <div style="font-weight: 500; color: var(--text-primary);">GitHub Repository</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a GitHub repository URL</div>
+              <div style="font-weight: 500; color: var(--text-primary);">GitHub 仓库</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">从 GitHub 仓库 URL 导入规格文档</div>
             </div>
           </label>
           <label class="spec-source-option" data-source="file">
             <input type="radio" name="spec-source" value="file" style="margin: 0;">
             <div>
-              <div style="font-weight: 500; color: var(--text-primary);">Local File</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a local file on your computer</div>
+              <div style="font-weight: 500; color: var(--text-primary);">本地文件</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">从本地文件导入规格文档</div>
             </div>
           </label>
           <label class="spec-source-option" data-source="url">
             <input type="radio" name="spec-source" value="url" style="margin: 0;">
             <div>
-              <div style="font-weight: 500; color: var(--text-primary);">URL</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">Import specs from a direct URL</div>
+              <div style="font-weight: 500; color: var(--text-primary);">网址</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">从直链网址导入规格文档</div>
             </div>
           </label>
         </div>
 
         <div id="github-input-section" style="display: none; margin-top: 20px;">
           <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
-            GitHub Repository URL:
+            GitHub 仓库地址：
           </label>
           <input
             type="text"
@@ -815,7 +815,7 @@ class App {
             style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; box-sizing: border-box;"
           />
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-            Enter the GitHub repository URL to clone and analyze with Claude CLI
+            输入 GitHub 仓库地址，将通过 Claude CLI 进行克隆和分析
           </p>
         </div>
 
@@ -823,12 +823,12 @@ class App {
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
             <div class="spinner"></div>
             <div style="flex: 1;">
-              <div style="font-weight: 500; color: var(--text-primary);">Processing Repository...</div>
+              <div style="font-weight: 500; color: var(--text-primary);">正在处理仓库...</div>
             </div>
           </div>
           <div style="margin-top: 16px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary); font-size: 13px;">
-              Progress Log:
+              进度日志：
             </label>
             <div
               id="processing-log"
@@ -922,7 +922,7 @@ class App {
 
     // Create and show modal
     this.currentModal = new Modal({
-      title: 'Get Specs from...',
+      title: '导入规格...',
       content: content,
       onConfirm: async () => {
         const selected = content.querySelector('input[name="spec-source"]:checked') as HTMLInputElement;
@@ -933,8 +933,8 @@ class App {
       onCancel: () => {
         this.currentModal = null;
       },
-      confirmText: 'Import',
-      cancelText: 'Cancel',
+      confirmText: '导入',
+      cancelText: '取消',
       width: '600px',
       closeOnConfirm: false, // Don't close modal when Import is clicked
     });
@@ -966,18 +966,18 @@ class App {
     // Validate input
     if (!repoUrl) {
       if (processingLog) {
-        processingLog.textContent = 'Error: Please enter a GitHub repository URL\n';
+        processingLog.textContent = '错误：请输入 GitHub 仓库地址\n';
       }
-      this.showErrorInModal('Please enter a GitHub repository URL', processingLog, modalFooter);
+      this.showErrorInModal('请输入 GitHub 仓库地址', processingLog, modalFooter);
       return;
     }
 
     // Validate GitHub URL
     if (!repoUrl.includes('github.com')) {
       if (processingLog) {
-        processingLog.textContent = 'Error: Please enter a valid GitHub repository URL\n';
+        processingLog.textContent = '错误：请输入有效的 GitHub 仓库地址\n';
       }
-      this.showErrorInModal('Please enter a valid GitHub repository URL', processingLog, modalFooter);
+      this.showErrorInModal('请输入有效的 GitHub 仓库地址', processingLog, modalFooter);
       return;
     }
 
@@ -987,14 +987,14 @@ class App {
     // Disable the Import button instead of hiding the footer
     if (this.currentModal) {
       this.currentModal.setConfirmButtonDisabled(true);
-      this.currentModal.setConfirmButtonText('Importing...');
+      this.currentModal.setConfirmButtonText('导入中...');
     }
     processingIndicator.style.display = 'block';
 
     // Initialize the log
     if (processingLog) {
       const timestamp = new Date().toLocaleTimeString();
-      processingLog.innerHTML = `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Starting GitHub import...</span></div><div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Repository URL: ${this.escapeHtml(repoUrl)}</span></div>`;
+      processingLog.innerHTML = `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">开始 GitHub 导入...</span></div><div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">仓库地址：${this.escapeHtml(repoUrl)}</span></div>`;
     }
 
     // Listen for progress updates
@@ -1070,9 +1070,9 @@ class App {
         // Log success message
         if (processingLog) {
           const timestamp = new Date().toLocaleTimeString();
-          processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Repository cloned successfully!</span></div>`;
-          processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Working directory: ${this.escapeHtml(result.repoPath)}</span></div>`;
-          processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Starting terminal for Claude analysis...</span></div>`;
+          processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">仓库克隆成功！</span></div>`;
+          processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">工作目录：${this.escapeHtml(result.repoPath)}</span></div>`;
+          processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">正在启动 Claude 分析终端...</span></div>`;
           processingLog.scrollTop = processingLog.scrollHeight;
         }
 
@@ -1090,7 +1090,7 @@ class App {
         // Add terminal header
         const terminalHeader = document.createElement('div');
         terminalHeader.className = 'terminal-header';
-        terminalHeader.innerHTML = `<span class="terminal-title">Terminal - Claude Analysis</span>`;
+        terminalHeader.innerHTML = `<span class="terminal-title">终端 - Claude 分析</span>`;
         terminalContainer.appendChild(terminalHeader);
 
         // Add terminal xterm container
@@ -1147,14 +1147,14 @@ class App {
               console.log('[GitHub Import] Output file read successfully, length:', fileResult.content.length);
 
               // Create new editor with the specs
-              const newEditorName = `Specs - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+              const newEditorName = `规格 - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
               const newEditor = await this.stateManager.createEditor(newEditorName);
               this.stateManager.updateEditorContent(newEditor.id, fileResult.content);
 
               // Re-enable the Import button
               if (this.currentModal) {
                 this.currentModal.setConfirmButtonDisabled(false);
-                this.currentModal.setConfirmButtonText('Import');
+                this.currentModal.setConfirmButtonText('导入');
               }
 
               // Close the modal and clean up
@@ -1173,8 +1173,8 @@ class App {
               const timestamp = new Date().toLocaleTimeString();
               if (processingLog) {
                 processingLog.style.display = 'block';
-                processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">Failed to read output_specs.md: ${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
-                processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Please check the terminal output above for any errors.</span></div>`;
+                processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">读取 output_specs.md 失败：${this.escapeHtml(fileResult.error || 'Unknown error')}</span></div>`;
+                processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">请检查上方终端输出以查看错误信息。</span></div>`;
                 processingLog.scrollTop = processingLog.scrollHeight;
               }
               outputLoaded = false; // Allow retry if read failed
@@ -1203,7 +1203,7 @@ class App {
                     console.log('[GitHub Import] File size stable, starting 30s timer...');
                     const timestamp = new Date().toLocaleTimeString();
                     if (processingLog) {
-                      processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">Output file detected, waiting for completion (30s stability check)...</span></div>`;
+                      processingLog.innerHTML += `<div class="log-info"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">→</span> <span class="log-message">检测到输出文件，等待生成完成（30秒稳定性检测）...</span></div>`;
                       processingLog.scrollTop = processingLog.scrollHeight;
                     }
                   } else {
@@ -1215,7 +1215,7 @@ class App {
                       console.log('[GitHub Import] Output file stable for 30 seconds, loading...');
                       const timestamp = new Date().toLocaleTimeString();
                       if (processingLog) {
-                        processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Output file complete. Loading...</span></div>`;
+                        processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">输出文件已就绪，正在加载...</span></div>`;
                         processingLog.scrollTop = processingLog.scrollHeight;
                       }
                       await loadOutputAndClose('file-stable-30s');
@@ -1289,7 +1289,7 @@ class App {
         // Log success message
         if (processingLog) {
           const timestamp = new Date().toLocaleTimeString();
-          processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Import completed successfully!</span></div><div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">Preparing to display results...</span></div>`;
+          processingLog.innerHTML += `<div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">导入成功！</span></div><div class="log-success"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">✓</span> <span class="log-message">正在准备显示结果...</span></div>`;
           processingLog.scrollTop = processingLog.scrollHeight;
         }
         // Show results in the same modal
@@ -1304,7 +1304,7 @@ class App {
       console.error('[GitHub Import] Exception caught:', errorText);
       if (processingLog) {
         const timestamp = new Date().toLocaleTimeString();
-        processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">ERROR: ${this.escapeHtml(errorText)}</span></div>`;
+        processingLog.innerHTML += `<div class="log-error"><span class="log-timestamp">[${timestamp}]</span> <span class="log-prefix">❌</span> <span class="log-message">错误：${this.escapeHtml(errorText)}</span></div>`;
         processingLog.scrollTop = processingLog.scrollHeight;
       }
 
@@ -1313,7 +1313,7 @@ class App {
       // Re-enable the Import button on error
       if (this.currentModal) {
         this.currentModal.setConfirmButtonDisabled(false);
-        this.currentModal.setConfirmButtonText('Import');
+        this.currentModal.setConfirmButtonText('导入');
       }
 
       this.showErrorInModal(
@@ -1351,7 +1351,7 @@ class App {
       if (onReset) {
         const retryBtn = document.createElement('button');
         retryBtn.className = 'modal-btn modal-btn-cancel';
-        retryBtn.textContent = 'Try Again';
+        retryBtn.textContent = '重试';
         retryBtn.addEventListener('click', () => {
           onReset();
         });
@@ -1360,7 +1360,7 @@ class App {
 
       const closeBtn = document.createElement('button');
       closeBtn.className = 'modal-btn modal-btn-confirm';
-      closeBtn.textContent = 'Close';
+      closeBtn.textContent = '关闭';
       closeBtn.addEventListener('click', () => {
         if (this.currentModal) {
           this.currentModal.close();
@@ -1378,12 +1378,12 @@ class App {
 
     modalDialog.innerHTML = `
       <div class="modal-header">
-        <h2 class="modal-title">Generated Specifications</h2>
+        <h2 class="modal-title">已生成规格文档</h2>
         <button class="modal-close-btn" id="modal-close-x">&times;</button>
       </div>
       <div class="modal-content" style="padding: 0;">
         <div style="padding: 20px; background: var(--bg-primary);">
-          <p style="color: var(--text-secondary); margin-bottom: 12px;">Specifications have been generated successfully:</p>
+          <p style="color: var(--text-secondary); margin-bottom: 12px;">规格文档已成功生成：</p>
           <textarea
             id="specs-output"
             readonly
@@ -1392,8 +1392,8 @@ class App {
         </div>
       </div>
       <div class="modal-footer" style="display: flex;">
-        <button class="modal-btn modal-btn-cancel" id="modal-close-btn">Close</button>
-        <button class="modal-btn modal-btn-confirm" id="copy-specs-btn">Copy to Clipboard</button>
+        <button class="modal-btn modal-btn-cancel" id="modal-close-btn">关闭</button>
+        <button class="modal-btn modal-btn-confirm" id="copy-specs-btn">复制到剪贴板</button>
       </div>
     `;
 
@@ -1417,14 +1417,14 @@ class App {
         try {
           await navigator.clipboard.writeText(output);
           const btn = copyBtn as HTMLButtonElement;
-          btn.textContent = 'Copied!';
+          btn.textContent = '已复制！';
           btn.disabled = true;
           setTimeout(() => {
-            btn.textContent = 'Copy to Clipboard';
+            btn.textContent = '复制到剪贴板';
             btn.disabled = false;
           }, 2000);
         } catch (err) {
-          alert('Failed to copy to clipboard');
+          alert('复制到剪贴板失败');
         }
       });
     }

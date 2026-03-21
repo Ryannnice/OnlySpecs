@@ -67,8 +67,8 @@ export class Toolbar {
   private createNewProjectBtn(): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'new-project-btn';
-    btn.textContent = 'Create a new project';
-    btn.title = 'Create a new project';
+    btn.textContent = '新建项目';
+    btn.title = '新建项目';
 
     // Plus icon
     const icon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
@@ -76,7 +76,7 @@ export class Toolbar {
       <line x1="5" y1="12" x2="19" y2="12"/>
     </svg>`;
 
-    btn.innerHTML = icon + 'Create a new project';
+    btn.innerHTML = icon + '新建项目';
 
     btn.addEventListener('click', () => {
       this.onCreateProject();
@@ -88,15 +88,15 @@ export class Toolbar {
   private createOpenProjectBtn(): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'open-project-btn';
-    btn.textContent = 'Open existing project';
-    btn.title = 'Open an existing project folder';
+    btn.textContent = '打开项目';
+    btn.title = '打开现有项目';
 
     // Folder open icon
     const icon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
     </svg>`;
 
-    btn.innerHTML = icon + 'Open existing project';
+    btn.innerHTML = icon + '打开项目';
 
     btn.addEventListener('click', () => {
       this.onOpenProject();
@@ -108,8 +108,8 @@ export class Toolbar {
   private createGetSpecsBtn(): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'get-specs-btn';
-    btn.textContent = 'Get Specs from...';
-    btn.title = 'Import specifications from external sources';
+    btn.textContent = '导入规格...';
+    btn.title = '从外部来源导入规格文档';
 
     btn.addEventListener('click', () => {
       this.onGetSpecs();
@@ -121,7 +121,7 @@ export class Toolbar {
   private createSettingsBtn(): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'settings-btn';
-    btn.title = 'Settings';
+    btn.title = '设置';
 
     // Settings/gear icon
     const icon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2">
@@ -140,7 +140,7 @@ export class Toolbar {
   private createThemeToggleBtn(): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'theme-toggle-btn';
-    btn.title = 'Toggle theme (Ctrl/Cmd + Shift + T)';
+    btn.title = '切换主题 (Ctrl/Cmd + Shift + T)';
 
     // Sun icon for light mode
     const sunIcon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

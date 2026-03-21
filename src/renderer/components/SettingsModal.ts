@@ -22,7 +22,7 @@ export class SettingsModal {
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <div>
           <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
-            API Key
+            API 密钥
           </label>
           <input
             type="text"
@@ -32,13 +32,13 @@ export class SettingsModal {
             style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; box-sizing: border-box; font-family: 'Monaco', 'Menlo', monospace;"
           />
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">
-            Your Anthropic API key for Claude access
+            用于访问 Claude 的 Anthropic API 密钥
           </p>
         </div>
 
         <div>
           <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
-            Base URL
+            接口地址
           </label>
           <input
             type="text"
@@ -48,25 +48,25 @@ export class SettingsModal {
             style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; box-sizing: border-box;"
           />
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">
-            The API base URL (default: https://api.anthropic.com)
+            API 接口地址（默认：https://api.anthropic.com）
           </p>
         </div>
 
         <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; border-left: 3px solid var(--accent-color);">
           <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">
-            <strong style="color: var(--text-primary);">Note:</strong> Settings are saved to <code style="background: var(--bg-primary); padding: 2px 6px; border-radius: 3px;">~/Documents/OnlySpecs/config.json</code>. Your API key is stored locally and never sent anywhere except to the configured API endpoint.
+            <strong style="color: var(--text-primary);">注意：</strong> 设置保存至 <code style="background: var(--bg-primary); padding: 2px 6px; border-radius: 3px;">~/Documents/OnlySpecs/config.json</code>。您的 API 密钥仅保存在本地，只会发送至配置的接口地址。
           </p>
         </div>
       </div>
     `;
 
     this.modal = new Modal({
-      title: 'Settings',
+      title: '设置',
       content: content,
       onConfirm: () => this.handleSave(),
       onCancel: () => this.handleClose(),
-      confirmText: 'Save',
-      cancelText: 'Cancel',
+      confirmText: '保存',
+      cancelText: '取消',
       width: '500px',
     });
 

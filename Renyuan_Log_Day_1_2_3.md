@@ -70,6 +70,8 @@ npm = Node Package Manager（Node.js 包管理器）
 
 # ***2025.3.21***
 
+## 知识学习
+
 ### 开源库OnlySpecs
 
 #### node-pty
@@ -132,5 +134,53 @@ Node.js 是一个运行环境，可以用 JavaScript 写服务端程序
     └── Nginx（反向代理，监听 80/443 端口）
           └── Node.js 进程（监听 3000 端口）
                 └── 你的业务代码      
+```
+
+
+## 实践
+
+### Web版OnlySpecs功能测试
+
+已完成在web上的部署，使用简单的html转跳
+
+汉化前端菜单栏
+
+### 融入大项目的Workshop部分：
+
+原架构：
+
+```
+用户 → Vue
+        │
+        ▼
+FastAPI /generate
+        │
+        ▼
+DeepSeek 生成 HTML
+        │
+        ▼
+FastAPI /upload
+        │
+        ▼
+阿里云 OSS
+        │
+        ▼
+返回 URL
+        │
+        ▼
+Vue 展示
+```
+
+
+新架构：
+
+```
+ 大项目
+ ├── Vue 仪表盘（前端）   → Docker: Nginx 静态托管，端口 80
+ ├── FastAPI 后端         → Docker: Uvicorn，端口 9000
+ │   ├── /generate        → DeepSeek 流式生成 HTML
+ │   └── /upload          → 阿里云 OSS 上传
+ └── OnlySpecs（待加入）  → Docker: Node.js，端口 3579
+     └── 功能：Specs 编写、Claude AI 代码生成、终端
 ```
 

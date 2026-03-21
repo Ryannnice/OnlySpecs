@@ -48,9 +48,9 @@ export class FileExplorer {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"/>
             </svg>
-            <span>File Explorer</span>
+            <span>文件浏览器</span>
           </div>
-          <button class="file-explorer-open-btn" title="Open Folder">
+          <button class="file-explorer-open-btn" title="打开文件夹">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1 4v10a1 1 0 001 1h12a1 1 0 001-1V4H1zm1-2h12a2 2 0 012 2v10a2 2 0 01-2 2H2a2 2 0 01-2-2V4a2 2 0 012-2z"/>
             </svg>
@@ -61,8 +61,8 @@ export class FileExplorer {
             <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style="opacity: 0.3;">
               <path d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"/>
             </svg>
-            <p>No folder opened</p>
-            <button class="file-explorer-open-big-btn">Open Folder</button>
+            <p>未打开文件夹</p>
+            <button class="file-explorer-open-big-btn">打开文件夹</button>
           </div>
         </div>
       </div>
@@ -168,7 +168,7 @@ export class FileExplorer {
           <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style="opacity: 0.3;">
             <path d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"/>
           </svg>
-          <p>Empty folder</p>
+          <p>空文件夹</p>
         </div>
       `;
       return;
@@ -207,7 +207,7 @@ export class FileExplorer {
     // Add delete icon for specs files and folders
     const showDeleteIcon = entry.isDirectory || this.isSpecsFile(entry.name);
     const deleteIcon = showDeleteIcon
-      ? `<button class="file-delete-btn" title="${entry.isDirectory ? 'Delete folder' : 'Delete file'}" data-path="${this.escapeHtml(entry.path)}" data-is-directory="${entry.isDirectory}">
+      ? `<button class="file-delete-btn" title="${entry.isDirectory ? '删除文件夹' : '删除文件'}" data-path="${this.escapeHtml(entry.path)}" data-is-directory="${entry.isDirectory}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3,6 5,6 21,6"/>
             <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
@@ -330,10 +330,10 @@ export class FileExplorer {
     const fileName = filePath.split('/').pop() || filePath;
     const itemType = isDirectory ? 'folder' : 'file';
     const warningText = isDirectory
-      ? `\n\nThis will permanently delete the folder and all files inside it.`
-      : `\n\nThis will permanently delete the file from the folder.`;
+      ? `\n\n这将永久删除该文件夹及其内所有文件。`
+      : `\n\n这将永久删除该文件。`;
 
-    const confirmed = confirm(`Are you sure you want to delete "${fileName}"?${warningText}`);
+    const confirmed = confirm(`确定要删除 "${fileName}" 吗？${warningText}`);
 
     if (!confirmed) return;
 
@@ -357,7 +357,7 @@ export class FileExplorer {
       // Refresh the file tree
       await this.refresh();
     } else {
-      alert(`Failed to delete ${itemType}: ${result.error || 'Unknown error'}`);
+      alert(`删除失败：${result.error || 'Unknown error'}`);
     }
   }
 
@@ -390,27 +390,27 @@ export class FileExplorer {
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M0 2v12h16V2H0zm15 11H1V3h14v10zM3 5h2v2H3V5zm0 3h2v2H3V8zm0 3h10v1H3v-1z"/>
         </svg>
-        <span>Open in Terminal</span>
+        <span>在终端中打开</span>
       </div>
       <div class="context-menu-item" data-action="revealInFinder">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M1 4v10a1 1 0 001 1h12a1 1 0 001-1V4H1zm1-2h12a2 2 0 012 2v10a2 2 0 01-2 2H2a2 2 0 01-2-2V4a2 2 0 012-2z"/>
         </svg>
-        <span>Reveal in Finder</span>
+        <span>在资源管理器中显示</span>
       </div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item" data-action="copyPath">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M4 4h3v1H4v8h6v-2h1v3H3V4h1zm4-2h6v10H8V2zm1 1v8h4V3H9z"/>
         </svg>
-        <span>Copy Path</span>
+        <span>复制路径</span>
       </div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item" data-action="rename">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M11.498 1.502a1.5 1.5 0 012.121 0l1.879 1.879a1.5 1.5 0 010 2.121l-9.88 9.88a.5.5 0 01-.207.121l-3.5 1a.5.5 0 01-.624-.624l1-3.5a.5.5 0 01.121-.207l9.88-9.88zm1.414.707a.5.5 0 00-.707 0L10.5 4.707 12.293 6.5l1.707-1.707a.5.5 0 000-.707l-1.086-1.086zM11.793 5.5L10 3.707l-8 8V14h2.293l8-8z"/>
         </svg>
-        <span>Rename</span>
+        <span>重命名</span>
       </div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item context-menu-item-danger" data-action="delete">
@@ -418,7 +418,7 @@ export class FileExplorer {
           <polyline points="3,6 5,6 21,6"/>
           <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
         </svg>
-        <span>Delete</span>
+        <span>删除</span>
       </div>
     `;
     document.body.appendChild(this.contextMenu);
@@ -520,14 +520,14 @@ export class FileExplorer {
     content.className = 'rename-dialog-content';
 
     const label = document.createElement('label');
-    label.textContent = `Enter new name for "${oldName}":`;
+    label.textContent = `输入 "${oldName}" 的新名称：`;
     label.className = 'rename-label';
 
     const input = document.createElement('input');
     input.type = 'text';
     input.value = oldName;
     input.className = 'rename-input';
-    input.placeholder = 'Enter new name';
+    input.placeholder = '输入新名称';
 
     // Select the filename without extension for files
     const lastDotIndex = oldName.lastIndexOf('.');
@@ -547,10 +547,10 @@ export class FileExplorer {
     let newName: string | null = null;
 
     const modal = new Modal({
-      title: isDirectory ? 'Rename Folder' : 'Rename File',
+      title: isDirectory ? '重命名文件夹' : '重命名文件',
       content,
-      confirmText: 'Rename',
-      cancelText: 'Cancel',
+      confirmText: '重命名',
+      cancelText: '取消',
       width: '400px',
       onConfirm: () => {
         newName = input.value.trim();
@@ -600,9 +600,9 @@ export class FileExplorer {
       const errorContent = document.createElement('div');
       errorContent.innerHTML = `<p>Failed to rename: ${result.error || 'Unknown error'}</p>`;
       const errorModal = new Modal({
-        title: 'Error',
+        title: '错误',
         content: errorContent,
-        confirmText: 'OK',
+        confirmText: '确定',
         width: '350px'
       });
       errorModal.open();

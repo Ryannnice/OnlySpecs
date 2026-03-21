@@ -65,7 +65,7 @@ export class Modal {
       if (options.onCancel) {
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'modal-btn modal-btn-cancel';
-        cancelBtn.textContent = options.cancelText || 'Cancel';
+        cancelBtn.textContent = options.cancelText || '取消';
         cancelBtn.addEventListener('click', () => {
           if (options.onCancel) options.onCancel();
           this.close();
@@ -76,7 +76,7 @@ export class Modal {
       if (options.onConfirm) {
         const confirmBtn = document.createElement('button');
         confirmBtn.className = 'modal-btn modal-btn-confirm';
-        confirmBtn.textContent = options.confirmText || 'OK';
+        confirmBtn.textContent = options.confirmText || '确定';
         confirmBtn.addEventListener('click', async () => {
           if (options.onConfirm) await options.onConfirm();
           // Only close if closeOnConfirm is true or not specified (default true for backward compatibility)

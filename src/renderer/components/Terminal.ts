@@ -197,7 +197,7 @@ export class Terminal {
       }, 1200);
     } catch (error) {
       console.error('Failed to start terminal:', error);
-      this.xterm.write('\r\n\x1b[31mFailed to start terminal. See console for details.\x1b[0m\r\n');
+      this.xterm.write('\r\n\x1b[31m终端启动失败，请查看控制台获取详情。\x1b[0m\r\n');
       this.resolvePromptReady?.();
       this.resolvePromptReady = undefined;
     }

@@ -143,7 +143,7 @@ export class EditorWithTerminal {
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 0a8 8 0 100 16A8 8 0 008 0zM7 4h2v4H7V4zm0 5h2v2H7V9z"/>
         </svg>
-        <span>Generate from Specs</span>
+        <span>从规格生成代码</span>
       `;
       generateBtn.addEventListener('click', () => {
         if (this.onGenerateFromSpecs) {
@@ -160,7 +160,7 @@ export class EditorWithTerminal {
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 16A8 8 0 118 0a8 8 0 010 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 110-2 1 1 0 010 2z"/>
         </svg>
-        <span>Review and Test</span>
+        <span>审查与测试</span>
       `;
       reviewBtn.addEventListener('click', () => {
         if (this.onReviewAndTest) {
@@ -186,7 +186,7 @@ export class EditorWithTerminal {
     this.compareLabel = document.createElement('label');
     this.compareLabel.className = 'compare-checkbox-label';
     (this.compareLabel as HTMLLabelElement).htmlFor = `compare-${id}`;
-    this.compareLabel.textContent = 'Compare';
+    this.compareLabel.textContent = '对比';
 
     // Preview checkbox
     this.previewCheckbox = document.createElement('input');
@@ -198,7 +198,7 @@ export class EditorWithTerminal {
     this.previewLabel = document.createElement('label');
     this.previewLabel.className = 'preview-checkbox-label';
     (this.previewLabel as HTMLLabelElement).htmlFor = `preview-${id}`;
-    this.previewLabel.textContent = 'Preview';
+    this.previewLabel.textContent = '预览';
 
     checkboxesSection.appendChild(this.compareCheckbox);
     checkboxesSection.appendChild(this.compareLabel);
@@ -248,9 +248,9 @@ export class EditorWithTerminal {
       <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
         <path d="M6 8L1 3h10L6 8z"/>
       </svg>
-      <span>Terminal</span>
+      <span>终端</span>
     `;
-    this.terminalToggle.title = this.isTerminalExpanded ? 'Hide Terminal' : 'Show Terminal';
+    this.terminalToggle.title = this.isTerminalExpanded ? '隐藏终端' : '显示终端';
 
     // Set active state and icon rotation if expanded by default
     if (this.isTerminalExpanded) {
@@ -265,7 +265,7 @@ export class EditorWithTerminal {
     this.addTerminalBtn = document.createElement('button');
     this.addTerminalBtn.className = 'add-terminal-btn';
     this.addTerminalBtn.innerHTML = '+';
-    this.addTerminalBtn.title = 'Add New Terminal';
+    this.addTerminalBtn.title = '新建终端';
     this.addTerminalBtn.style.display = this.isTerminalExpanded ? 'flex' : 'none';
 
     toggleSection.appendChild(this.terminalToggle);
@@ -394,7 +394,7 @@ export class EditorWithTerminal {
     EditorWithTerminal.terminalStates.set(id, this.isTerminalExpanded);
 
     // Update button
-    this.terminalToggle.title = this.isTerminalExpanded ? 'Hide Terminal' : 'Show Terminal';
+    this.terminalToggle.title = this.isTerminalExpanded ? '隐藏终端' : '显示终端';
     this.terminalToggle.classList.toggle('active', this.isTerminalExpanded);
 
     // Update icon rotation
@@ -565,12 +565,12 @@ export class EditorWithTerminal {
 
     const title = document.createElement('span');
     title.className = 'terminal-item-title';
-    title.textContent = `Terminal ${this.nextTerminalId}`;
+    title.textContent = `终端 ${this.nextTerminalId}`;
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'terminal-item-close';
     closeBtn.innerHTML = '×';
-    closeBtn.title = 'Close Terminal';
+    closeBtn.title = '关闭终端';
     closeBtn.addEventListener('click', () => {
       this.removeTerminal(terminalId);
     });
@@ -633,7 +633,7 @@ export class EditorWithTerminal {
       if (icon) {
         icon.style.transform = 'rotate(0deg)';
       }
-      this.terminalToggle.title = 'Show Terminal';
+      this.terminalToggle.title = '显示终端';
     }
 
     // Trigger resize event for Monaco to adjust
@@ -767,7 +767,7 @@ export class EditorWithTerminal {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'terminal-item-close';
     closeBtn.innerHTML = '×';
-    closeBtn.title = 'Close Terminal';
+    closeBtn.title = '关闭终端';
     closeBtn.addEventListener('click', () => {
       this.removeTerminal(terminalId);
     });
@@ -851,7 +851,7 @@ export class EditorWithTerminal {
       EditorWithTerminal.terminalStates.set(this.editorId, true);
 
       // Update button
-      this.terminalToggle.title = 'Hide Terminal';
+      this.terminalToggle.title = '隐藏终端';
       this.terminalToggle.classList.add('active');
 
       // Update icon rotation

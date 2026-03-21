@@ -15,7 +15,9 @@
     "lint": "eslint --ext .ts,.tsx .",
     "test": "npx tsx tests/claude-sdk.test.ts",
     "test:mock": "npx tsx tests/claude-sdk.test.ts --mock",
-    "postinstall": "electron-rebuild -f -w node-pty"
+    "postinstall": "electron-rebuild -f -w node-pty",
+    "build:renderer": "vite build --config vite.renderer.mjs",
+    "web": "npm run build:renderer && tsx src/web-server/index.ts"
   },
   "keywords": [
     "electron",
@@ -34,7 +36,9 @@
     "@electron-forge/plugin-vite": "^7.4.0",
     "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^3.7.2",
+    "@types/express": "^4.17.25",
     "@types/node": "^20.12.0",
+    "@types/ws": "^8.18.1",
     "electron": "^30.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0",
@@ -44,8 +48,10 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.63",
     "@anthropic-ai/sdk": "^0.78.0",
     "electron-squirrel-startup": "^1.0.1",
+    "express": "^4.22.1",
     "marked": "^15.0.4",
     "node-pty": "^1.1.0",
+    "ws": "^8.19.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
     "xterm-addon-web-links": "^0.9.0"
