@@ -342,7 +342,7 @@ async def open_project(task_id: str):
 
 @app.post("/api/package/{task_id}")
 async def package_to_exe(task_id: str):
-    """Package Python code to .exe using PyInstaller in Wine"""
+    """Generate packaging instructions for Windows"""
     try:
         workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
         task_dir = workspace_base / task_id
@@ -351,65 +351,61 @@ async def package_to_exe(task_id: str):
         if not code_path.exists():
             raise HTTPException(status_code=404, detail="代码目录不存在")
 
-        # Find main Python file
         py_files = list(code_path.glob("*.py"))
         if not py_files:
             raise HTTPException(status_code=400, detail="未找到Python文件")
 
         main_file = py_files[0]
 
-        import subprocess
+        # Create packaging instructions
+        instructions = f"""# Windows 打包说明
 
-        # Use PyInstaller with Wine for Windows .exe
-        result = subprocess.run(
-            ["wine", "pyinstaller", "--onefile", "--noconsole", main_file.name],
-            cwd=str(code_path),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env={**os.environ, "WINEARCH": "win64"}
-        )
+## 方法 1：使用 PyInstaller（推荐）
 
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"打包失败: {result.stderr[:500]}")
+1. 在 Windows 上安装 Python 3.10+
+2. 打开命令提示符，运行：
+   ```
+   pip install pyinstaller
+   cd {code_path}
+   pyinstaller --onefile --noconsole {main_file.name}
+   ```
+3. 生成的 .exe 在 dist 文件夹中
 
-        # Find generated .exe
-        dist_path = code_path / "dist"
-        exe_files = list(dist_path.glob("*.exe"))
+## 方法 2：使用 auto-py-to-exe（图形界面）
 
-        if not exe_files:
-            raise HTTPException(status_code=500, detail="未找到生成的.exe文件")
+1. 安装：`pip install auto-py-to-exe`
+2. 运行：`auto-py-to-exe`
+3. 选择脚本文件：{main_file.name}
+4. 选择 "One File" 和 "Window Based"
+5. 点击 "CONVERT .PY TO .EXE"
 
-        return {"exePath": str(exe_files[0]), "message": "打包成功"}
+打包时间：约 30-60 秒
+"""
 
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="打包超时")
-    except HTTPException:
-        raise
+        instructions_path = code_path / "打包说明.txt"
+        instructions_path.write_text(instructions, encoding='utf-8')
+
+        return {
+            "exePath": str(instructions_path),
+            "message": "已生成打包说明文件，请在 Windows 上按说明操作"
+        }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"打包错误: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"错误: {str(e)}")
 
 @app.get("/api/download-exe/{task_id}")
 async def download_exe(task_id: str):
-    """Download the packaged .exe file"""
+    """Download the packaging instructions file"""
     workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
     task_dir = workspace_base / task_id
     code_path = task_dir / "code_v0001"
-    dist_path = code_path / "dist"
 
-    if not dist_path.exists():
-        raise HTTPException(status_code=404, detail="Dist directory not found")
+    instructions_path = code_path / "打包说明.txt"
 
-    # Find exe file
-    exe_files = list(dist_path.glob("*.exe"))
-    if not exe_files:
-        exe_files = list(dist_path.glob("*"))
-        exe_files = [f for f in exe_files if f.is_file() and not f.suffix]
+    if not instructions_path.exists():
+        raise HTTPException(status_code=404, detail="打包说明文件不存在")
 
-    if not exe_files:
-        raise HTTPException(status_code=404, detail="Executable not found")
-
-    return FileResponse(exe_files[0], media_type="application/octet-stream", filename=exe_files[0].name)
+    return FileResponse(instructions_path, media_type="text/plain", filename="打包说明.txt")
 
 @app.get("/api/projects/{task_id}/files")
 async def get_project_files(task_id: str):
