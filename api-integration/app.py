@@ -20,8 +20,60 @@ load_dotenv()
 # ANSI escape code pattern
 ANSI_ESCAPE_PATTERN = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
+# Translation mapping for common Claude CLI messages
+TRANSLATIONS = {
+    # Status messages
+    "Starting": "正在启动",
+    "Reading": "正在读取",
+    "Writing": "正在写入",
+    "Creating": "正在创建",
+    "Generating": "正在生成",
+    "Analyzing": "正在分析",
+    "Processing": "正在处理",
+    "Completed": "已完成",
+    "Failed": "失败",
+    "Error": "错误",
+    "Warning": "警告",
+    "Success": "成功",
+
+    # File operations
+    "file": "文件",
+    "directory": "目录",
+    "folder": "文件夹",
+    "created": "已创建",
+    "updated": "已更新",
+    "deleted": "已删除",
+    "modified": "已修改",
+
+    # Code generation
+    "Implementing": "正在实现",
+    "Refactoring": "正在重构",
+    "Testing": "正在测试",
+    "Debugging": "正在调试",
+    "Optimizing": "正在优化",
+
+    # Common phrases
+    "Let me": "让我",
+    "I'll": "我将",
+    "I will": "我将",
+    "I'm going to": "我将要",
+    "I've": "我已经",
+    "I have": "我已经",
+    "Done": "完成",
+    "Finished": "已完成",
+    "Complete": "完成",
+}
+
 def strip_ansi_codes(text: str) -> str:
     return ANSI_ESCAPE_PATTERN.sub('', text)
+
+def translate_log(text: str) -> str:
+    """Translate common English phrases to Chinese"""
+    result = text
+    for en, zh in TRANSLATIONS.items():
+        # Case-insensitive replacement
+        result = re.sub(r'\b' + re.escape(en) + r'\b', zh, result, flags=re.IGNORECASE)
+    return result
 
 app = FastAPI(title="OnlySpecs Frontend Integration")
 
@@ -93,7 +145,8 @@ async def stream_logs(task_id: str):
                     if len(logs) > last_log_count:
                         for log in logs[last_log_count:]:
                             clean_log = strip_ansi_codes(log)
-                            yield f"data: {json.dumps({'type': 'log', 'content': clean_log})}\n\n"
+                            translated_log = translate_log(clean_log)
+                            yield f"data: {json.dumps({'type': 'log', 'content': translated_log})}\n\n"
                         last_log_count = len(logs)
 
                     status = status_data.get("status")
