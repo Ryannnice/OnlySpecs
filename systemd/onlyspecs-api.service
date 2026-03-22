@@ -1,0 +1,16 @@
+[Unit]
+Description=OnlySpecs API Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/onlyspecs
+Environment="ANTHROPIC_API_KEY=your-api-key-here"
+Environment="ONLYSPECS_API_PORT=3580"
+ExecStart=/usr/bin/npm run api
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

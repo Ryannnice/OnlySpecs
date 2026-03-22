@@ -375,4 +375,50 @@ Build Worker（Docker）
   - 桌面程序：💻 下载 .exe + 📦 下载源码
   - 手机应用：📱 下载应用 + 📦 下载源码
 
+
+  部署步骤：
+
+  1. 在阿里云服务器上安装依赖：
+  # 安装Node.js
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+
+  # 安装Python
+  sudo apt-get install python3 python3-pip
+
+  # 安装Docker
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo usermod -aG docker $USER
+
+  # 安装Claude CLI
+  npm install -g @anthropic-ai/claude-code
+
+  2. 配置Claude API密钥：
+  export ANTHROPIC_API_KEY="your-api-key-here"
+                                              
+  3. 打包项目：                              
+  cd ~/OnlySpecs                            
+  tar -czf onlyspecs-deploy.tar.gz \ 
+    src/ \                                  
+    api-integration/ \   
+    package.json\                          
+    tsconfig.json                                                                                                                             
+  4. 上传到服务器：                         
+  scp onlyspecs-deploy.tar.gz user@your-server:/home/user/      
+
+  5. 在服务器上解压并启动：                 
+  tar -xzf onlyspecs-deploy.tar.gz                               
+  npm install                               
+  docker pull cdrx/pyinstaller-windows        
+                                           
+  # 启动服务                                 
+  npm run api &                             
+  cd api-integration && python3 app.py &                               
+
+  6. 配置防火墙：
+  sudo ufw allow 3580                                   
+  sudo ufw allow 9000                       
+
+  访问：http://your-server-ip:9000 
+
   

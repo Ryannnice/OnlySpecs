@@ -342,65 +342,52 @@ async def open_project(task_id: str):
 
 @app.post("/api/package/{task_id}")
 async def package_to_exe(task_id: str):
-    """Package Python code to .exe using PyInstaller"""
+    """Package Python code to .exe using PyInstaller in Wine"""
     try:
         workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
         task_dir = workspace_base / task_id
         code_path = task_dir / "code_v0001"
 
         if not code_path.exists():
-            raise HTTPException(status_code=404, detail="Code directory not found")
+            raise HTTPException(status_code=404, detail="代码目录不存在")
 
         # Find main Python file
         py_files = list(code_path.glob("*.py"))
         if not py_files:
-            raise HTTPException(status_code=400, detail="No Python files found")
+            raise HTTPException(status_code=400, detail="未找到Python文件")
 
         main_file = py_files[0]
 
-        # Check if PyInstaller is available
         import subprocess
-        import platform
-        try:
-            subprocess.run(["pyinstaller", "--version"], capture_output=True, check=True)
-        except:
-            raise HTTPException(status_code=500, detail="PyInstaller not installed. Run: pip install pyinstaller")
 
-        # Determine output name with .exe extension
-        output_name = f"{main_file.stem}.exe"
-
-        # Run PyInstaller with explicit .exe name
+        # Use PyInstaller with Wine for Windows .exe
         result = subprocess.run(
-            ["pyinstaller", "--onefile", "--windowed",
-             "--name", output_name.replace('.exe', ''),
-             "--distpath", str(code_path / "dist"),
-             "--workpath", str(code_path / "build"),
-             "--specpath", str(code_path),
-             str(main_file)],
+            ["wine", "pyinstaller", "--onefile", "--noconsole", main_file.name],
             cwd=str(code_path),
             capture_output=True,
-            text=True
+            text=True,
+            timeout=120,
+            env={**os.environ, "WINEARCH": "win64"}
         )
 
         if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"Packaging failed: {result.stderr}")
+            raise HTTPException(status_code=500, detail=f"打包失败: {result.stderr[:500]}")
 
-        # Check for .exe file
-        exe_path = code_path / "dist" / output_name
-        if not exe_path.exists():
-            # Fallback: find any file in dist
-            dist_files = list((code_path / "dist").glob("*"))
-            if dist_files:
-                exe_path = dist_files[0]
-            else:
-                raise HTTPException(status_code=500, detail=f"Executable not found at {exe_path}")
+        # Find generated .exe
+        dist_path = code_path / "dist"
+        exe_files = list(dist_path.glob("*.exe"))
 
-        return {"exePath": str(exe_path), "message": "Packaging completed successfully"}
+        if not exe_files:
+            raise HTTPException(status_code=500, detail="未找到生成的.exe文件")
 
+        return {"exePath": str(exe_files[0]), "message": "打包成功"}
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="打包超时")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"打包错误: {str(e)}")
 
 @app.get("/api/download-exe/{task_id}")
 async def download_exe(task_id: str):
