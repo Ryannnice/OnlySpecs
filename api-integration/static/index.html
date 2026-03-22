@@ -16,6 +16,52 @@
             <p class="text-gray-600">基于 Claude 的 AI 代码生成器</p>
         </div>
 
+        <!-- Output Type Selector -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">选择输出类型</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                    @click="outputType = 'source'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'source'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">📄</div>
+                    <h3 class="font-semibold text-lg mb-2">源代码</h3>
+                    <p class="text-sm text-gray-600">获取可编辑的源文件，适合开发者学习和修改</p>
+                </div>
+
+                <div
+                    @click="outputType = 'web'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'web'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">🌐</div>
+                    <h3 class="font-semibold text-lg mb-2">Web 应用</h3>
+                    <p class="text-sm text-gray-600">单文件 HTML，在浏览器中直接运行，无需安装</p>
+                </div>
+
+                <div
+                    @click="outputType = 'exe'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'exe'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">💻</div>
+                    <h3 class="font-semibold text-lg mb-2">桌面程序</h3>
+                    <p class="text-sm text-gray-600">Windows .exe 可执行文件，双击即可运行</p>
+                </div>
+
+                <div
+                    @click="outputType = 'pwa'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'pwa'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">📱</div>
+                    <h3 class="font-semibold text-lg mb-2">手机应用</h3>
+                    <p class="text-sm text-gray-600">PWA 应用，可添加到手机主屏幕，支持离线</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Input Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-xl font-semibold mb-4">输入需求</h2>
@@ -139,6 +185,7 @@
             data() {
                 return {
                     prompt: '',
+                    outputType: 'web',
                     currentTask: null,
                     logs: [],
                     isGenerating: false,
@@ -157,7 +204,8 @@
 
                     try {
                         const response = await axios.post('/api/generate', {
-                            prompt: this.prompt
+                            prompt: this.prompt,
+                            outputType: this.outputType
                         });
 
                         this.currentTask = {

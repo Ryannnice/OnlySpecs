@@ -318,3 +318,28 @@ debug修复内容：
   ```
 
   ***全部修复***
+
+  朝着更更更低代码平台进发：
+
+  ```
+  📋 计划总结
+
+  核心功能： 在 Web 界面添加 4 种输出类型选择：
+
+  1. 📄 源代码 - 可编辑的源文件
+  2. 🌐 Web 应用 - 单文件 HTML，浏览器直接运行
+  3. 💻 桌面程序 - Windows .exe 可执行文件（自动打包）
+  4. 📱 手机应用 - PWA 渐进式 Web 应用
+
+  实现方案：
+  - 前端：精美的卡片选择器（4 个大卡片）
+  - 后端：根据选择自动增强 prompt
+  - 打包：使用 Docker + PyInstaller 自动生成 .exe
+
+  关键技术：
+  - Prompt 增强：自动添加输出格式指令
+  - Docker 打包：cdrx/pyinstaller-windows 镜像
+  - 无缝体验：用户只需选择类型，系统自动处理
+
+  完整计划已保存在：/home/ryan/.claude/plans/spicy-inventing-swan.md
+  ```

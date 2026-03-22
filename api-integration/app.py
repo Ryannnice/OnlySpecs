@@ -75,6 +75,15 @@ def translate_log(text: str) -> str:
         result = re.sub(r'\b' + re.escape(en) + r'\b', zh, result, flags=re.IGNORECASE)
     return result
 
+def enhance_prompt(prompt: str, output_type: str) -> str:
+    """Enhance prompt based on output type"""
+    enhancements = {
+        "web": "\n\nIMPORTANT: Generate as a single-file HTML application with embedded CSS and JavaScript. No external dependencies. Must run directly in browser.",
+        "exe": "\n\nIMPORTANT: Generate as a Python desktop application using pygame or tkinter. Include requirements.txt with all dependencies.",
+        "pwa": "\n\nIMPORTANT: Generate as a Progressive Web App with manifest.json. Single HTML file with responsive design for mobile devices."
+    }
+    return prompt + enhancements.get(output_type, "")
+
 app = FastAPI(title="OnlySpecs Frontend Integration")
 
 app.add_middleware(
@@ -90,6 +99,7 @@ API_TIMEOUT = 300.0
 
 class GenerateRequest(BaseModel):
     prompt: str
+    outputType: str = "source"
 
 class GenerateResponse(BaseModel):
     task_id: str
@@ -99,10 +109,13 @@ class GenerateResponse(BaseModel):
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate_code(request: GenerateRequest):
     try:
+        # Enhance prompt based on output type
+        enhanced_prompt = enhance_prompt(request.prompt, request.outputType)
+
         async with httpx.AsyncClient(timeout=API_TIMEOUT) as client:
             response = await client.post(
                 f"{ONLYSPECS_API_URL}/generate",
-                json={"prompt": request.prompt}
+                json={"prompt": enhanced_prompt}
             )
             response.raise_for_status()
             data = response.json()
