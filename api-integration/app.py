@@ -244,152 +244,89 @@ async def open_in_explorer(task_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static files (frontend)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+@app.get("/api/projects")
+async def list_local_projects():
+    """List all local project folders"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", "9000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    if not workspace_base.exists():
+        return {"projects": []}
 
+    projects = []
+    for task_dir in sorted(workspace_base.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if task_dir.is_dir() and task_dir.name.startswith("task_"):
+            code_path = task_dir / "code_v0001"
+            specs_path = task_dir / "specs_v0001.md"
 
-app = FastAPI(title="OnlySpecs Frontend Integration")
+            specs_content = ""
+            if specs_path.exists():
+                with open(specs_path, 'r', encoding='utf-8') as f:
+                    specs_content = f.read()[:200]
 
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+            files = []
+            if code_path.exists():
+                files = [f.name for f in code_path.iterdir() if f.is_file()]
 
-# OnlySpecs API configuration
-ONLYSPECS_API_URL = os.getenv("ONLYSPECS_API_URL", "http://localhost:3580")
-API_TIMEOUT = 300.0  # 5 minutes
+            projects.append({
+                "taskId": task_dir.name,
+                "path": str(task_dir),
+                "codePath": str(code_path) if code_path.exists() else None,
+                "specsPreview": specs_content,
+                "files": files,
+                "createdAt": task_dir.stat().st_mtime
+            })
 
-# Request/Response models
-class GenerateRequest(BaseModel):
-    prompt: str
+    return {"projects": projects}
 
-class GenerateResponse(BaseModel):
-    task_id: str
-    status: str
-    message: str
+@app.delete("/api/projects/{task_id}")
+async def delete_project(task_id: str):
+    """Delete a local project folder"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
+    task_dir = workspace_base / task_id
 
-# API endpoints
-@app.post("/api/generate", response_model=GenerateResponse)
-async def generate_code(request: GenerateRequest):
-    """Create a new code generation task"""
+    if not task_dir.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+
     try:
-        async with httpx.AsyncClient(timeout=API_TIMEOUT) as client:
-            response = await client.post(
-                f"{ONLYSPECS_API_URL}/generate",
-                json={"prompt": request.prompt}
-            )
-            response.raise_for_status()
-            data = response.json()
-            return GenerateResponse(
-                task_id=data["taskId"],
-                status=data["status"],
-                message=data.get("message", "Task created successfully")
-            )
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"API request failed: {str(e)}")
+        shutil.rmtree(task_dir)
+        return {"message": "Project deleted successfully", "taskId": task_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/status/{task_id}")
-async def get_task_status(task_id: str):
-    """Get the status of a generation task"""
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{ONLYSPECS_API_URL}/status/{task_id}")
-            response.raise_for_status()
-            return response.json()
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"API request failed: {str(e)}")
+@app.get("/api/projects/{task_id}/download")
+async def download_project(task_id: str):
+    """Download a local project as ZIP"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
+    task_dir = workspace_base / task_id
+    code_path = task_dir / "code_v0001"
 
-@app.get("/api/logs/{task_id}")
-async def stream_logs(task_id: str):
-    """Stream task logs using Server-Sent Events"""
-    async def log_generator() -> AsyncGenerator[str, None]:
-        last_log_count = 0
-        max_retries = 180  # 3 minutes with 1 second intervals
-        retry_count = 0
+    if not code_path.exists():
+        raise HTTPException(status_code=404, detail="Project code not found")
 
-        while retry_count < max_retries:
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    # Get logs from /logs endpoint
-                    logs_response = await client.get(
-                        f"{ONLYSPECS_API_URL}/logs/{task_id}"
-                    )
-                    logs_response.raise_for_status()
-                    logs_data = logs_response.json()
-                    logs = logs_data.get("logs", [])
+    tmp_dir = tempfile.mkdtemp()
+    zip_base = os.path.join(tmp_dir, f"onlyspecs-{task_id}")
+    zip_path = shutil.make_archive(zip_base, "zip", root_dir=str(code_path.parent), base_dir=code_path.name)
 
-                    # Get status
-                    status_response = await client.get(
-                        f"{ONLYSPECS_API_URL}/status/{task_id}"
-                    )
-                    status_response.raise_for_status()
-                    status_data = status_response.json()
+    return FileResponse(zip_path, media_type="application/zip", filename=f"{task_id}.zip")
 
-                    # Send new logs (strip ANSI codes)
-                    if len(logs) > last_log_count:
-                        for log in logs[last_log_count:]:
-                            clean_log = strip_ansi_codes(log)
-                            yield f"data: {json.dumps({'type': 'log', 'content': clean_log})}\n\n"
-                        last_log_count = len(logs)
+@app.get("/api/projects/{task_id}/open")
+async def open_project(task_id: str):
+    """Open project folder in file manager"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
+    code_path = workspace_base / task_id / "code_v0001"
 
-                    # Check if task is complete
-                    status = status_data.get("status")
-                    if status in ["completed", "failed"]:
-                        yield f"data: {json.dumps({'type': 'status', 'status': status})}\n\n"
-                        break
+    if not code_path.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
 
-            except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    import subprocess
+    result = subprocess.run(["wslpath", "-w", str(code_path)], capture_output=True, text=True)
+    if result.returncode == 0:
+        win_path = result.stdout.strip()
+        subprocess.Popen(["explorer.exe", win_path])
+    else:
+        subprocess.Popen(["xdg-open", str(code_path)])
 
-            await asyncio.sleep(1)
-            retry_count += 1
-
-        # Send completion message
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-
-    return StreamingResponse(log_generator(), media_type="text/event-stream")
-
-@app.get("/api/tasks")
-async def list_tasks():
-    """List all generation tasks"""
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{ONLYSPECS_API_URL}/tasks")
-            response.raise_for_status()
-            return response.json()
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"API request failed: {str(e)}")
-
-@app.get("/api/download/{task_id}")
-async def download_code(task_id: str):
-    """Download generated code as a zip file"""
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(f"{ONLYSPECS_API_URL}/download/{task_id}")
-            response.raise_for_status()
-
-            # Save to temporary file and return
-            import tempfile
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
-                tmp.write(response.content)
-                tmp_path = tmp.name
-
-            return FileResponse(
-                tmp_path,
-                media_type="application/zip",
-                filename=f"onlyspecs-{task_id}.zip"
-            )
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"API request failed: {str(e)}")
+    return {"path": str(code_path), "message": "Opened in file manager"}
 
 # Mount static files (frontend)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

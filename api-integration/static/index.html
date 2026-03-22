@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnlySpecs - AI 代码生成器</title>
+    <title>Workshop</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,8 +12,54 @@
     <div id="app" class="container mx-auto px-4 py-8 max-w-6xl">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">OnlySpecs</h1>
-            <p class="text-gray-600">基于 Claude 的 AI 代码生成器</p>
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Workshop</h1>
+            <p class="text-gray-600">立刻描述，一键让“AI程序员”生成您的想法！</p>
+        </div>
+
+        <!-- Output Type Selector -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">选择输出类型</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                    @click="outputType = 'source'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'source'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">📄</div>
+                    <h3 class="font-semibold text-lg mb-2">源代码</h3>
+                    <p class="text-sm text-gray-600">获取可编辑的源文件，适合开发者学习和修改</p>
+                </div>
+
+                <div
+                    @click="outputType = 'web'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'web'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">🌐</div>
+                    <h3 class="font-semibold text-lg mb-2">Web 应用</h3>
+                    <p class="text-sm text-gray-600">单文件 HTML，在浏览器中直接运行，无需安装</p>
+                </div>
+
+                <div
+                    @click="outputType = 'exe'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'exe'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">💻</div>
+                    <h3 class="font-semibold text-lg mb-2">桌面程序</h3>
+                    <p class="text-sm text-gray-600">Windows .exe 可执行文件，双击即可运行</p>
+                </div>
+
+                <div
+                    @click="outputType = 'pwa'"
+                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'pwa'}"
+                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
+                >
+                    <div class="text-4xl mb-2">📱</div>
+                    <h3 class="font-semibold text-lg mb-2">手机应用</h3>
+                    <p class="text-sm text-gray-600">PWA 应用，可添加到手机主屏幕，支持离线</p>
+                </div>
+            </div>
         </div>
 
         <!-- Output Type Selector -->
@@ -176,6 +222,50 @@
                 </div>
             </div>
         </div>
+
+        <!-- Local Projects Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">本地项目</h2>
+                <button
+                    @click="toggleProjects"
+                    class="text-blue-600 hover:text-blue-700 text-sm"
+                >
+                    {{ showProjects ? '收起' : '展开' }}
+                </button>
+            </div>
+
+            <div v-if="showProjects">
+                <div v-if="localProjects.length === 0" class="text-gray-500 text-center py-4">
+                    暂无本地项目
+                </div>
+                <div v-else class="space-y-3">
+                    <div
+                        v-for="project in localProjects"
+                        :key="project.taskId"
+                        class="border border-gray-200 rounded-lg p-4"
+                    >
+                        <div class="flex items-center justify-between mb-2 cursor-pointer" @click="project.expanded = !project.expanded">
+                            <span class="font-mono text-sm text-gray-600">{{ project.taskId }}</span>
+                            <span class="text-xs text-gray-500">{{ formatDate(project.createdAt) }}</span>
+                        </div>
+                        <div v-if="project.specsPreview" class="text-sm text-gray-700 mb-2 truncate">{{ project.specsPreview }}</div>
+
+                        <div v-if="project.expanded" class="mt-3 pt-3 border-t">
+                            <div class="text-sm font-medium mb-2">文件列表：</div>
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <span v-for="file in project.files" :key="file" class="px-2 py-1 bg-gray-100 rounded text-xs font-mono">{{ file }}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="openProjectFolder(project.codePath)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">打开</button>
+                                <button @click="downloadProject(project.taskId)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">下载</button>
+                                <button @click="deleteProject(project.taskId)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -190,7 +280,9 @@
                     logs: [],
                     isGenerating: false,
                     showHistory: false,
+                    showProjects: false,
                     historyTasks: [],
+                    localProjects: [],
                     eventSource: null
                 };
             },
@@ -317,6 +409,52 @@
                     } catch (error) {
                         console.error('Failed to load history:', error);
                     }
+                },
+
+                async toggleProjects() {
+                    this.showProjects = !this.showProjects;
+                    if (this.showProjects && this.localProjects.length === 0) {
+                        await this.loadProjects();
+                    }
+                },
+
+                async loadProjects() {
+                    try {
+                        const response = await axios.get('/api/projects');
+                        this.localProjects = (response.data.projects || []).map(p => ({...p, expanded: false}));
+                    } catch (error) {
+                        console.error('Failed to load projects:', error);
+                    }
+                },
+
+                async openProjectFolder(codePath) {
+                    if (!codePath) return;
+                    try {
+                        const taskId = codePath.split('/').slice(-2)[0];
+                        await axios.get(`/api/projects/${taskId}/open`);
+                    } catch (error) {
+                        alert('无法打开: ' + (error.response?.data?.detail || error.message));
+                    }
+                },
+
+                async downloadProject(taskId) {
+                    window.location.href = `/api/projects/${taskId}/download`;
+                },
+
+                async deleteProject(taskId) {
+                    if (!confirm('确定要删除这个项目吗？此操作不可恢复！')) return;
+
+                    try {
+                        await axios.delete(`/api/projects/${taskId}`);
+                        alert('项目已删除');
+                        await this.loadProjects();
+                    } catch (error) {
+                        alert('删除失败: ' + (error.response?.data?.detail || error.message));
+                    }
+                },
+
+                formatDate(timestamp) {
+                    return new Date(timestamp * 1000).toLocaleString('zh-CN');
                 },
 
                 async loadTask(taskId) {
