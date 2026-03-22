@@ -56,9 +56,9 @@
                     </span>
                 </div>
 
-                <div v-if="currentTask.workDir" class="flex items-center gap-3 mb-2">
-                    <span class="text-sm font-medium text-gray-600">工作目录:</span>
-                    <span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{{ currentTask.workDir }}</span>
+                <div v-if="currentTask.codePath" class="flex items-center gap-3 mb-2">
+                    <span class="text-sm font-medium text-gray-600">代码目录:</span>
+                    <span class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{{ currentTask.codePath }}</span>
                 </div>
             </div>
 
@@ -189,6 +189,7 @@
                             this.$nextTick(() => this.scrollToBottom());
                         } else if (data.type === 'status') {
                             this.currentTask.status = data.status;
+                            if (data.codePath) this.currentTask.codePath = data.codePath;
                             if (data.status === 'completed' || data.status === 'failed') {
                                 this.isGenerating = false;
                                 this.eventSource.close();
@@ -210,7 +211,7 @@
                             const data = response.data;
 
                             this.currentTask.status = data.status;
-                            this.currentTask.workDir = data.workDir;
+                            this.currentTask.codePath = data.codePath;
 
                             if (data.status === 'completed' || data.status === 'failed') {
                                 this.isGenerating = false;
@@ -236,12 +237,22 @@
 
                 async downloadCode() {
                     if (!this.currentTask) return;
-                    window.open(`/api/download/${this.currentTask.taskId}`, '_blank');
+                    // Trigger browser download
+                    const a = document.createElement('a');
+                    a.href = `/api/download/${this.currentTask.taskId}`;
+                    a.download = `onlyspecs-${this.currentTask.taskId}.zip`;
+                    a.click();
                 },
 
-                openInExplorer() {
-                    if (!this.currentTask?.workDir) return;
-                    alert(`请在文件管理器中打开: ${this.currentTask.workDir}`);
+                async openInExplorer() {
+                    if (!this.currentTask) return;
+                    try {
+                        const response = await axios.get(`/api/open/${this.currentTask.taskId}`);
+                        // Show the path in case user wants to navigate manually
+                        this.currentTask.codePath = response.data.path;
+                    } catch (error) {
+                        alert('无法打开文件管理器: ' + (error.response?.data?.detail || error.message));
+                    }
                 },
 
                 async toggleHistory() {
