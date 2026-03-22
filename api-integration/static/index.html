@@ -131,17 +131,63 @@
 
             <!-- Actions -->
             <div v-if="currentTask.status === 'completed'" class="flex gap-3">
+                <!-- 源代码：查看代码 -->
+                <button
+                    v-if="outputType === 'source'"
+                    @click="viewCurrentCode"
+                    class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                >
+                    📄 线上查看
+                </button>
+
+                <!-- Web应用：线上运行 -->
+                <button
+                    v-if="outputType === 'web'"
+                    @click="previewCurrentApp"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                >
+                    🌐 线上运行
+                </button>
+
+                <!-- 桌面程序：打包/下载.exe -->
+                <button
+                    v-if="outputType === 'exe' && !exeReady"
+                    @click="packageToExe"
+                    :disabled="isPackaging"
+                    class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 transition"
+                >
+                    {{ isPackaging ? '打包中...' : '💻 打包为 .exe' }}
+                </button>
+                <button
+                    v-if="outputType === 'exe' && exeReady"
+                    @click="downloadExe"
+                    class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                >
+                    💻 下载 .exe
+                </button>
+
+                <!-- 手机应用：下载应用 -->
+                <button
+                    v-if="outputType === 'pwa'"
+                    @click="downloadCode"
+                    class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition"
+                >
+                    📱 下载应用
+                </button>
+
+                <!-- 所有类型都有：下载源码 -->
                 <button
                     @click="downloadCode"
                     class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                 >
-                    下载代码
+                    📦 下载源码
                 </button>
+
                 <button
                     @click="openInExplorer"
                     class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
-                    在文件管理器中打开
+                    打开文件夹
                 </button>
             </div>
         </div>
@@ -205,7 +251,12 @@
                         class="border border-gray-200 rounded-lg p-4"
                     >
                         <div class="flex items-center justify-between mb-2 cursor-pointer" @click="project.expanded = !project.expanded">
-                            <span class="font-mono text-sm text-gray-600">{{ project.taskId }}</span>
+                            <div class="flex items-center gap-2">
+                                <span :class="typeTagClass(project.outputType)" class="px-2 py-1 rounded text-xs font-medium">
+                                    {{ typeTagText(project.outputType) }}
+                                </span>
+                                <span class="font-mono text-sm text-gray-600">{{ project.taskId }}</span>
+                            </div>
                             <span class="text-xs text-gray-500">{{ formatDate(project.createdAt) }}</span>
                         </div>
                         <div v-if="project.specsPreview" class="text-sm text-gray-700 mb-2 truncate">{{ project.specsPreview }}</div>
@@ -216,10 +267,12 @@
                                 <span v-for="file in project.files" :key="file" class="px-2 py-1 bg-gray-100 rounded text-xs font-mono">{{ file }}</span>
                             </div>
                             <div class="flex gap-2">
-                                <button @click="viewCode(project.taskId)" class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">查看代码</button>
-                                <button @click="previewApp(project.taskId)" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">线上运行</button>
+                                <button v-if="project.outputType === 'source'" @click="viewCode(project.taskId)" class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">📄 线上查看</button>
+                                <button v-if="project.outputType === 'web'" @click="previewApp(project.taskId)" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">🌐 线上运行</button>
+                                <button v-if="project.outputType === 'exe'" @click="downloadProject(project.taskId)" class="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700">💻 下载 .exe</button>
+                                <button v-if="project.outputType === 'pwa'" @click="downloadProject(project.taskId)" class="px-3 py-1 bg-pink-600 text-white text-sm rounded hover:bg-pink-700">📱 下载应用</button>
+                                <button @click="downloadProject(project.taskId)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">📦 下载源码</button>
                                 <button @click="openProjectFolder(project.codePath)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">打开</button>
-                                <button @click="downloadProject(project.taskId)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">下载</button>
                                 <button @click="deleteProject(project.taskId)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">删除</button>
                             </div>
                         </div>
@@ -274,6 +327,9 @@
                     currentTask: null,
                     logs: [],
                     isGenerating: false,
+                    isPackaging: false,
+                    exeReady: false,
+                    exePath: '',
                     showHistory: false,
                     showProjects: false,
                     historyTasks: [],
@@ -455,7 +511,8 @@
                 async loadProjects() {
                     try {
                         const response = await axios.get('/api/projects');
-                        this.localProjects = (response.data.projects || []).map(p => ({...p, expanded: false}));
+                        this.localProjects = (response.data.projects || []).map(p => ({...p, expanded: true}));
+                        this.showProjects = true;
                     } catch (error) {
                         console.error('Failed to load projects:', error);
                     }
@@ -505,6 +562,65 @@
                 previewApp(taskId) {
                     this.previewUrl = `/api/projects/${taskId}/preview`;
                     this.showPreview = true;
+                },
+
+                async viewCurrentCode() {
+                    if (!this.currentTask) return;
+                    await this.viewCode(this.currentTask.taskId);
+                },
+
+                previewCurrentApp() {
+                    if (!this.currentTask) return;
+                    this.previewUrl = `/api/projects/${this.currentTask.taskId}/preview`;
+                    this.showPreview = true;
+                },
+
+                async packageToExe() {
+                    if (!this.currentTask) return;
+                    this.isPackaging = true;
+                    this.logs.push('📦 [系统] 正在打包为 .exe 文件...');
+
+                    try {
+                        const response = await axios.post(`/api/package/${this.currentTask.taskId}`);
+                        this.logs.push('✅ [系统] 打包完成！');
+                        this.logs.push(`📥 [系统] 可执行文件: ${response.data.exePath}`);
+                        this.exeReady = true;
+                        this.exePath = response.data.exePath;
+                    } catch (error) {
+                        this.logs.push('❌ [错误] 打包失败: ' + (error.response?.data?.detail || error.message));
+                        alert('打包失败: ' + (error.response?.data?.detail || error.message));
+                    } finally {
+                        this.isPackaging = false;
+                    }
+                },
+
+                downloadExe() {
+                    if (!this.exePath) return;
+                    const fileName = this.exePath.split('/').pop();
+                    const a = document.createElement('a');
+                    a.href = `/api/download-exe/${this.currentTask.taskId}`;
+                    a.download = fileName;
+                    a.click();
+                },
+
+                typeTagClass(type) {
+                    const classes = {
+                        'source': 'bg-purple-100 text-purple-700',
+                        'web': 'bg-indigo-100 text-indigo-700',
+                        'exe': 'bg-orange-100 text-orange-700',
+                        'pwa': 'bg-pink-100 text-pink-700'
+                    };
+                    return classes[type] || 'bg-gray-100 text-gray-700';
+                },
+
+                typeTagText(type) {
+                    const texts = {
+                        'source': '📄 源代码',
+                        'web': '🌐 Web应用',
+                        'exe': '💻 桌面程序',
+                        'pwa': '📱 手机应用'
+                    };
+                    return texts[type] || '📄 源代码';
                 },
 
                 async loadTask(taskId) {
