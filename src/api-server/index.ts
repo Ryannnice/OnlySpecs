@@ -3,11 +3,7 @@ import { createServer } from 'http';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { createRequire } from 'module';
-import type { IPty } from 'node-pty';
-
-const require = createRequire(import.meta.url);
-const pty = require('node-pty') as typeof import('node-pty');
+import { spawn } from 'child_process';
 
 const PORT = Number(process.env.ONLYSPECS_API_PORT ?? 3580);
 const WORKSPACE_BASE = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'api-workspaces');
@@ -23,7 +19,7 @@ interface Task {
   error?: string;
   createdAt: Date;
   updatedAt: Date;
-  ptyProcess?: IPty;
+  childProcess?: ReturnType<typeof spawn>;
 }
 
 const tasks = new Map<string, Task>();
@@ -59,43 +55,37 @@ async function startClaudeGeneration(task: Task): Promise<void> {
     await ensureDir(task.codePath);
     task.logs.push(`[${new Date().toISOString()}] Code directory created: ${task.codePath}`);
 
-    // Start Claude CLI via node-pty
-    const claudeCommand = 'claude';
-    const args = ['--dangerously-skip-permissions'];
+    // Start Claude CLI with --print flag to avoid interactive UI
+    const claudePrompt = `Read the specs file at ${task.specsPath} and implement the code in ${task.codePath}. Follow the specifications exactly.`;
+    const args = ['--dangerously-skip-permissions', '--print'];
 
     task.logs.push(`[${new Date().toISOString()}] Starting Claude CLI...`);
 
-    const ptyProcess = pty.spawn(claudeCommand, args, {
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 30,
+    const child = spawn('claude', args, {
       cwd: task.workspacePath,
-      env: process.env as { [key: string]: string },
+      env: { ...process.env },
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    task.ptyProcess = ptyProcess;
+    task.childProcess = child;
 
-    // Capture output
-    ptyProcess.onData((data) => {
-      task.logs.push(data);
+    // Write prompt to stdin and close it
+    child.stdin.write(claudePrompt);
+    child.stdin.end();
+
+    child.stdout.on('data', (data: Buffer) => {
+      const text = data.toString();
+      task.logs.push(text);
       task.updatedAt = new Date();
     });
 
-    // Auto-confirm trust prompt and send initial prompt to Claude
-    setTimeout(() => {
-      // Send "1" to confirm trust prompt
-      ptyProcess.write('1\r');
-      task.logs.push(`[${new Date().toISOString()}] Auto-confirmed workspace trust`);
-    }, 2000);
+    child.stderr.on('data', (data: Buffer) => {
+      const text = data.toString();
+      task.logs.push(`[STDERR] ${text}`);
+      task.updatedAt = new Date();
+    });
 
-    setTimeout(() => {
-      const prompt = `Read the specs file at ${task.specsPath} and implement the code in ${task.codePath}. Follow the specifications exactly.`;
-      ptyProcess.write(prompt + '\r');
-      task.logs.push(`[${new Date().toISOString()}] Sent prompt to Claude`);
-    }, 4000);
-
-    // Handle process exit
-    ptyProcess.onExit(({ exitCode }) => {
+    child.on('close', (exitCode) => {
       if (exitCode === 0) {
         task.status = 'completed';
         task.logs.push(`[${new Date().toISOString()}] Claude CLI completed successfully`);
@@ -105,7 +95,7 @@ async function startClaudeGeneration(task: Task): Promise<void> {
         task.logs.push(`[${new Date().toISOString()}] ${task.error}`);
       }
       task.updatedAt = new Date();
-      task.ptyProcess = undefined;
+      task.childProcess = undefined;
     });
 
   } catch (error: any) {
@@ -248,9 +238,9 @@ app.delete('/task/:taskId', async (req, res) => {
 
   try {
     // Kill the process if running
-    if (task.ptyProcess) {
-      task.ptyProcess.kill();
-      task.ptyProcess = undefined;
+    if (task.childProcess) {
+      task.childProcess.kill();
+      task.childProcess = undefined;
     }
 
     // Optionally cleanup workspace
