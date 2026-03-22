@@ -257,6 +257,8 @@
                                 <span v-for="file in project.files" :key="file" class="px-2 py-1 bg-gray-100 rounded text-xs font-mono">{{ file }}</span>
                             </div>
                             <div class="flex gap-2">
+                                <button @click="viewCode(project.taskId)" class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">查看代码</button>
+                                <button @click="previewApp(project.taskId)" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">线上运行</button>
                                 <button @click="openProjectFolder(project.codePath)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">打开</button>
                                 <button @click="downloadProject(project.taskId)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">下载</button>
                                 <button @click="deleteProject(project.taskId)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">删除</button>
@@ -264,6 +266,40 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Code Viewer Modal -->
+        <div v-if="showCodeViewer" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="showCodeViewer = false">
+            <div class="bg-white rounded-lg w-5/6 h-5/6 flex flex-col" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="text-lg font-semibold">代码查看器</h3>
+                    <button @click="showCodeViewer = false" class="text-gray-500 hover:text-gray-700">✕</button>
+                </div>
+                <div class="flex flex-1 overflow-hidden">
+                    <div class="w-1/4 border-r overflow-y-auto p-2">
+                        <div v-for="file in codeFiles" :key="file.path"
+                             @click="selectedFile = file"
+                             :class="{'bg-blue-100': selectedFile === file}"
+                             class="p-2 cursor-pointer hover:bg-gray-100 rounded text-sm">
+                            {{ file.name }}
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto p-4">
+                        <pre v-if="selectedFile" class="bg-gray-900 text-green-400 p-4 rounded text-sm overflow-x-auto"><code>{{ selectedFile.content }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="showPreview = false">
+            <div class="bg-white rounded-lg w-5/6 h-5/6 flex flex-col" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="text-lg font-semibold">应用预览</h3>
+                    <button @click="showPreview = false" class="text-gray-500 hover:text-gray-700">✕</button>
+                </div>
+                <iframe :src="previewUrl" class="flex-1 w-full border-0"></iframe>
             </div>
         </div>
     </div>
@@ -283,7 +319,12 @@
                     showProjects: false,
                     historyTasks: [],
                     localProjects: [],
-                    eventSource: null
+                    eventSource: null,
+                    showCodeViewer: false,
+                    showPreview: false,
+                    codeFiles: [],
+                    selectedFile: null,
+                    previewUrl: ''
                 };
             },
             methods: {
@@ -455,6 +496,22 @@
 
                 formatDate(timestamp) {
                     return new Date(timestamp * 1000).toLocaleString('zh-CN');
+                },
+
+                async viewCode(taskId) {
+                    try {
+                        const response = await axios.get(`/api/projects/${taskId}/files`);
+                        this.codeFiles = response.data.files;
+                        this.selectedFile = this.codeFiles[0] || null;
+                        this.showCodeViewer = true;
+                    } catch (error) {
+                        alert('无法加载代码: ' + (error.response?.data?.detail || error.message));
+                    }
+                },
+
+                previewApp(taskId) {
+                    this.previewUrl = `/api/projects/${taskId}/preview`;
+                    this.showPreview = true;
                 },
 
                 async loadTask(taskId) {
