@@ -15,9 +15,12 @@
     "lint": "eslint --ext .ts,.tsx .",
     "test": "npx tsx tests/claude-sdk.test.ts",
     "test:mock": "npx tsx tests/claude-sdk.test.ts --mock",
+    "test:api": "npx tsx tests/api-test.ts",
+    "test:api:wait": "npx tsx tests/api-test.ts --wait",
     "postinstall": "electron-rebuild -f -w node-pty",
     "build:renderer": "vite build --config vite.renderer.mjs",
-    "web": "npm run build:renderer && tsx src/web-server/index.ts"
+    "web": "npm run build:renderer && tsx src/web-server/index.ts",
+    "api": "tsx src/api-server/index.ts"
   },
   "keywords": [
     "electron",

@@ -147,7 +147,7 @@ Node.js 是一个运行环境，可以用 JavaScript 写服务端程序
 
 ### 融入大项目的Workshop部分：
 
-原架构：
+**我们项目Workshop的原架构：**
 
 ```
 用户 → Vue
@@ -171,9 +171,24 @@ FastAPI /upload
 Vue 展示
 ```
 
+**开源软件OnlySpecs的原架构：**
+```
+Electron UI
+    ↓
+Renderer (DOM + Monaco)
+    ↓
+IPC
+    ↓
+Main Process
+    ↓
+node-pty
+    ↓
+Claude CLI
+```
 
-新架构：
+**新架构融合，两种方案：**
 
+***方案一，分离式：***
 ```
  大项目
  ├── Vue 仪表盘（前端）   → Docker: Nginx 静态托管，端口 80
@@ -183,4 +198,109 @@ Vue 展示
  └── OnlySpecs（待加入）  → Docker: Node.js，端口 3579
      └── 功能：Specs 编写、Claude AI 代码生成、终端
 ```
+
+***方案二，通过Fast API使用功能，仅替换掉LLM，使用claude agent编写软件：***
+```
+Vue 前端
+    ↓ POST /generate-software { prompt }
+  FastAPI
+    ↓ 调用 OnlySpecs Node.js 服务（HTTP 或子进程）
+  OnlySpecs Web Server
+    ↓ 写 specs.md → 启动 Claude CLI
+  Claude CLI（node-pty）
+    ↓ 生成代码
+  返回结果（文件路径 / OSS URL）
+    ↑ 流式进度推送（SSE / WebSocket）
+  Vue 前端展示
+
+
+FastAPI 端点设计
+  # POST /generate-software
+  # 输入：用户 prompt
+  # 输出：SSE 流式进度 + 最终代码 URL
+
+  @app.post("/generate-software")
+  async def generate_software(prompt: str):
+      # 1. 调用 OnlySpecs API 创建 specs 文件
+      # 2. 触发 Generate from Specs
+      # 3. 流式返回进度
+      # 4. 完成后上传到 OSS，返回 URL
+```
+
+先尝试方案二，先设计无头OnlySpecs的API
+
+
+
+
+# ***2025.3.22***
+
+## 知识学习
+
+
+## 实践
+
+Fast API 编写完成，核心是/generate 根据用户指令来交给OnlySpecs，利用其功能生成
+
+api测试成功（文档：/home/ryan/OnlySpecs/docs/API_QUICKSTART.md，测试：终端运行 npm run test:api）
+
+接下来对接我们的项目第二部分Workshop：
+实现方式参考原框架，写出仿制的前端：/home/ryan/OnlySpecs/api-integration
+
+整个Pipeline:
+
+```
+  📁 Project Structure        
+
+  ~/OnlySpecs/api-integration/                   
+  ├── app.py              # FastAPI backend (API proxy + SSE streaming)
+  ├── requirements.txt    # Python dependencies          
+  ├── .env               # Environment configuration         
+  ├── .env.example       # Environment template           
+  ├── start.sh           # Quick start script                                            
+  ├── static/                                                                                             
+  │   └── index.html     # Vue 3 frontend (312 lines)
+  └── README.md          # Complete documentation                                                                                               
+                                                                                                                                                
+  🎯 Key Features Implemented
+
+  Backend (FastAPI):                      
+  - ✅ CORS-enabled API proxy to OnlySpecs API  
+  - ✅ SSE streaming for real-time log updates
+  - ✅ Endpoints: /api/generate, /api/status, /api/logs, /api/tasks, /api/download
+  - ✅ Error handling and timeout controls                      
+                                                                                                                                                
+  Frontend (Vue 3 + Tailwind):         
+  - ✅ Clean, responsive UI with Chinese localization
+  - ✅ Real-time log display with auto-scroll
+  - ✅ Task status tracking (pending/running/completed/failed)
+  - ✅ History task list with click-to-load        
+  - ✅ Download generated code as ZIP                    
+  - ✅ EventSource for SSE log streaming           
+                                                                                                                                                
+  🚀 Quick Start                   
+
+  # 1. Start OnlySpecs API (in one terminal)  
+  cd ~/OnlySpecs      
+  npm run api            
+
+  # 2. Start frontend (in another terminal)                       
+  cd ~/OnlySpecs/api-integration  
+  ./start.sh                          
+                                                                                                    
+  Then visit: http://localhost:9000     
+
+  📝 Usage Flow                            
+  1. Enter software requirements in the text area                                                                                               
+  2. Click "开始生成" (Start Generation)                  
+  3. Watch real-time Claude CLI logs                            
+  4. Download code when complete or open in file explorer
+  5. View history tasks in the collapsible section                  
+                                                                                                                                                
+  The implementation follows the plan exactly, using SSE for real-time updates and providing a simple, user-friendly interface for interacting  
+  with OnlySpecs.    
+```
+
+已经能完美运行，依靠简洁的web界面，通过Fast API和OnlySpecs交互
+
+***输入-->OnlySpecs-->Claude CLI-->输出***，用户只负责敲几个字：项目第二部分低代码的思想
 
