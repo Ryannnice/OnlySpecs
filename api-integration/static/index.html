@@ -62,52 +62,6 @@
             </div>
         </div>
 
-        <!-- Output Type Selector -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">选择输出类型</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                    @click="outputType = 'source'"
-                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'source'}"
-                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
-                >
-                    <div class="text-4xl mb-2">📄</div>
-                    <h3 class="font-semibold text-lg mb-2">源代码</h3>
-                    <p class="text-sm text-gray-600">获取可编辑的源文件，适合开发者学习和修改</p>
-                </div>
-
-                <div
-                    @click="outputType = 'web'"
-                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'web'}"
-                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
-                >
-                    <div class="text-4xl mb-2">🌐</div>
-                    <h3 class="font-semibold text-lg mb-2">Web 应用</h3>
-                    <p class="text-sm text-gray-600">单文件 HTML，在浏览器中直接运行，无需安装</p>
-                </div>
-
-                <div
-                    @click="outputType = 'exe'"
-                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'exe'}"
-                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
-                >
-                    <div class="text-4xl mb-2">💻</div>
-                    <h3 class="font-semibold text-lg mb-2">桌面程序</h3>
-                    <p class="text-sm text-gray-600">Windows .exe 可执行文件，双击即可运行</p>
-                </div>
-
-                <div
-                    @click="outputType = 'pwa'"
-                    :class="{'ring-2 ring-blue-500 bg-blue-50': outputType === 'pwa'}"
-                    class="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg transition"
-                >
-                    <div class="text-4xl mb-2">📱</div>
-                    <h3 class="font-semibold text-lg mb-2">手机应用</h3>
-                    <p class="text-sm text-gray-600">PWA 应用，可添加到手机主屏幕，支持离线</p>
-                </div>
-            </div>
-        </div>
-
         <!-- Input Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-xl font-semibold mb-4">输入需求</h2>
@@ -146,6 +100,7 @@
                     <span :class="statusClass(currentTask.status)" class="px-3 py-1 rounded-full text-sm font-medium">
                         {{ statusText(currentTask.status) }}
                     </span>
+                    <span v-if="isGenerating" class="text-sm font-medium text-blue-600">⏱️ {{ elapsedTime }}</span>
                 </div>
 
                 <div v-if="currentTask.codePath" class="flex items-center gap-3 mb-2">
@@ -167,6 +122,10 @@
                 <div ref="logsContainer" class="bg-gray-900 text-green-400 p-4 rounded-lg h-96 overflow-y-auto font-mono text-sm whitespace-pre-wrap break-words">
                     <div v-for="(log, index) in logs" :key="index" class="mb-1" v-html="formatLog(log)"></div>
                     <div v-if="logs.length === 0" class="text-gray-500">等待日志输出...</div>
+                    <div v-if="isGenerating && logs.length > 0" class="flex items-center gap-2 mt-2 text-yellow-400">
+                        <span class="animate-pulse">●</span>
+                        <span>Claude 正在思考和编写代码... (已用时: {{ elapsedTime }})</span>
+                    </div>
                 </div>
             </div>
 
@@ -324,7 +283,10 @@
                     showPreview: false,
                     codeFiles: [],
                     selectedFile: null,
-                    previewUrl: ''
+                    previewUrl: '',
+                    startTime: null,
+                    elapsedTime: '00:00',
+                    timerInterval: null
                 };
             },
             methods: {
@@ -334,8 +296,10 @@
                     this.isGenerating = true;
                     this.logs = [];
                     this.currentTask = null;
+                    this.startTimer();
 
                     try {
+                        this.logs.push('🚀 [系统] 正在初始化生成任务...');
                         const response = await axios.post('/api/generate', {
                             prompt: this.prompt,
                             outputType: this.outputType
@@ -347,11 +311,14 @@
                             workDir: null
                         };
 
+                        this.logs.push(`✅ [系统] 任务创建成功 (ID: ${response.data.task_id})`);
+                        this.logs.push('📝 [系统] 正在准备工作空间...');
                         this.startLogStream(response.data.task_id);
                         this.pollStatus(response.data.task_id);
                     } catch (error) {
-                        alert('生成失败: ' + (error.response?.data?.detail || error.message));
+                        this.logs.push('❌ [错误] 生成失败: ' + (error.response?.data?.detail || error.message));
                         this.isGenerating = false;
+                        this.stopTimer();
                     }
                 },
 
@@ -360,6 +327,7 @@
                         this.eventSource.close();
                     }
 
+                    this.logs.push('🔗 [系统] 正在连接实时日志流...');
                     this.eventSource = new EventSource(`/api/logs/${taskId}`);
 
                     this.eventSource.onmessage = (event) => {
@@ -371,8 +339,16 @@
                         } else if (data.type === 'status') {
                             this.currentTask.status = data.status;
                             if (data.codePath) this.currentTask.codePath = data.codePath;
-                            if (data.status === 'completed' || data.status === 'failed') {
+                            if (data.status === 'completed') {
+                                this.logs.push('🎉 [系统] 代码生成完成！');
                                 this.isGenerating = false;
+                                this.stopTimer();
+                                this.eventSource.close();
+                                this.loadLocalProjects();
+                            } else if (data.status === 'failed') {
+                                this.logs.push('❌ [系统] 生成失败');
+                                this.isGenerating = false;
+                                this.stopTimer();
                                 this.eventSource.close();
                             }
                         } else if (data.type === 'done') {
@@ -381,8 +357,25 @@
                     };
 
                     this.eventSource.onerror = () => {
-                        this.eventSource.close();
+                        this.logs.push('⚠️ [警告] 日志连接中断，正在重连...');
                     };
+                },
+
+                startTimer() {
+                    this.startTime = Date.now();
+                    this.timerInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                        const seconds = (elapsed % 60).toString().padStart(2, '0');
+                        this.elapsedTime = `${minutes}:${seconds}`;
+                    }, 1000);
+                },
+
+                stopTimer() {
+                    if (this.timerInterval) {
+                        clearInterval(this.timerInterval);
+                        this.timerInterval = null;
+                    }
                 },
 
                 async pollStatus(taskId) {
