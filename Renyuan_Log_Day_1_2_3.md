@@ -331,6 +331,7 @@ debug修复内容：
   3. 💻 桌面程序 - Windows .exe 可执行文件（自动打包）
   4. 📱 手机应用 - PWA 渐进式 Web 应用
 
+<<<<<<< HEAD
   实现方案：
   - 前端：精美的卡片选择器（4 个大卡片）
   - 后端：根据选择自动增强 prompt
@@ -343,3 +344,32 @@ debug修复内容：
 
   完整计划已保存在：/home/ryan/.claude/plans/spicy-inventing-swan.md
   ```
+=======
+用户浏览器
+    │
+    ▼
+Vue 前端
+    │
+    ▼
+FastAPI API
+    │
+    ▼
+OnlySpecs AI Engine
+    │
+    ▼
+生成代码
+    │
+    ▼
+Build Worker（Docker）
+    │
+    ▼
+编译为 .exe
+    │
+    ▼
+上传到 OSS
+    │
+    ▼
+用户下载
+```
+
+>>>>>>> 58b5ad7 (update)

@@ -328,6 +328,48 @@ async def open_project(task_id: str):
 
     return {"path": str(code_path), "message": "Opened in file manager"}
 
+@app.get("/api/projects/{task_id}/files")
+async def get_project_files(task_id: str):
+    """Get all files in a project with their content"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
+    code_path = workspace_base / task_id / "code_v0001"
+
+    if not code_path.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    files = []
+    for file_path in code_path.rglob("*"):
+        if file_path.is_file():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                files.append({
+                    "name": file_path.name,
+                    "path": str(file_path.relative_to(code_path)),
+                    "content": content,
+                    "size": file_path.stat().st_size
+                })
+            except:
+                pass  # Skip binary files
+
+    return {"files": files}
+
+@app.get("/api/projects/{task_id}/preview")
+async def preview_project(task_id: str):
+    """Serve HTML file for preview"""
+    workspace_base = Path.home() / "Documents" / "OnlySpecs" / "api-workspaces"
+    code_path = workspace_base / task_id / "code_v0001"
+
+    if not code_path.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Find HTML file
+    html_files = list(code_path.glob("*.html"))
+    if not html_files:
+        raise HTTPException(status_code=404, detail="No HTML file found")
+
+    return FileResponse(html_files[0], media_type="text/html")
+
 # Mount static files (frontend)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
