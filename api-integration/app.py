@@ -97,6 +97,9 @@ app.add_middleware(
 ONLYSPECS_API_URL = os.getenv("ONLYSPECS_API_URL", "http://localhost:3580")
 API_TIMEOUT = 300.0
 
+# Bypass proxy for localhost
+HTTPX_PROXIES = {"all://": None}
+
 class GenerateRequest(BaseModel):
     prompt: str
     outputType: str = "source"
@@ -112,7 +115,7 @@ async def generate_code(request: GenerateRequest):
         # Enhance prompt based on output type
         enhanced_prompt = enhance_prompt(request.prompt, request.outputType)
 
-        async with httpx.AsyncClient(timeout=API_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=API_TIMEOUT, proxies=HTTPX_PROXIES) as client:
             response = await client.post(
                 f"{ONLYSPECS_API_URL}/generate",
                 json={"prompt": enhanced_prompt}
@@ -130,7 +133,7 @@ async def generate_code(request: GenerateRequest):
 @app.get("/api/status/{task_id}")
 async def get_task_status(task_id: str):
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, proxies=HTTPX_PROXIES) as client:
             response = await client.get(f"{ONLYSPECS_API_URL}/status/{task_id}")
             response.raise_for_status()
             return response.json()
@@ -146,7 +149,7 @@ async def stream_logs(task_id: str):
 
         while retry_count < max_retries:
             try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=30.0, proxies=HTTPX_PROXIES) as client:
                     logs_response = await client.get(f"{ONLYSPECS_API_URL}/logs/{task_id}")
                     logs_response.raise_for_status()
                     logs = logs_response.json().get("logs", [])
@@ -181,7 +184,7 @@ async def stream_logs(task_id: str):
 @app.get("/api/tasks")
 async def list_tasks():
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, proxies=HTTPX_PROXIES) as client:
             response = await client.get(f"{ONLYSPECS_API_URL}/tasks")
             response.raise_for_status()
             return response.json()
@@ -192,7 +195,7 @@ async def list_tasks():
 async def download_code(task_id: str):
     """Zip the generated code directory and stream it to the browser"""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, proxies=HTTPX_PROXIES) as client:
             response = await client.get(f"{ONLYSPECS_API_URL}/download/{task_id}")
             response.raise_for_status()
             data = response.json()
@@ -220,7 +223,7 @@ async def download_code(task_id: str):
 async def open_in_explorer(task_id: str):
     """Open the code directory in the system file manager"""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, proxies=HTTPX_PROXIES) as client:
             response = await client.get(f"{ONLYSPECS_API_URL}/download/{task_id}")
             response.raise_for_status()
             data = response.json()

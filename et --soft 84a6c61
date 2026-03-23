@@ -1,0 +1,45 @@
+[33m847dea9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m 更新
+[33m84a6c61[m 添加Docker部署更新文档，待添加OSS/FC
+[33m6cd06ea[m 简化结构，待总结部署方案、合并谕书的云端架构
+[33mbc2a68a[m 待调试打包和下载.exe
+[33m3b868a1[m cxfreeze打包.exe完成，但是是LInux版本。待debug软件版本使得能运行
+[33m135bd56[m 四种类型更新对应的列表功能
+[33m8719968[m 优化软件生成器的日志输出
+[33maeaeeb4[m 更新文档
+[33mc32c042[m local changes
+[33me31605a[m update
+[33m9fb03ff[m 待构建完整产出.exe工作流
+[33mdb76ecd[m 待构建完整产出.exe工作流
+[33m20ce4e1[m 完成前端软件选项，待添加自动打包一键运行功能
+[33m1da5c9f[m 汉化网页输出日志，待调节流程以生成网页应用或本地app
+[33m224ccaf[m 基础功能debug完成，待汉化，线上运行模式。
+[33m59fdbca[m 成功运行，待汉化、debug文件存储和下载，待添加线上运行模式
+[33m5884c9e[m 融合前端和Fast API，更新文档和学习日志，待汉化前端，存储软件/线上运行等最终功能
+[33medfe993[m Web测试通过，待融入大项目的Workshop部分
+[33m4d77859[m update
+[33m45c6b74[m update
+[33mbaa0e18[m log_new
+[33mb1b3b6e[m 1
+[33m1902683[m Merge branch 'dev'
+[33mb98e89a[m Add Review & Test dialogs and Claude prompts
+[33m7acc829[m Add file explorer context menu & terminal
+[33mecd224d[m Add modal controls and robust import flow
+[33m6229662[m Update index.ts
+[33m23813c9[m Create README.md
+[33m9aac701[m Add terminal options & Claude interactive support
+[33me990978[m Update index.ts
+[33m368e06b[m Add folder delete, terminal cwd & prompt handling
+[33m9da7e53[m Add fs IPC, terminal cwd, generate-from-specs
+[33m97f571c[m Add project management, FS IPC and explorer delete
+[33m2b9e541[m Add File Explorer, multi-terminal & IPC
+[33m2fd7738[m Add Markdown preview panel and UI updates
+[33m1382808[m Add robust diff/compare editor support
+[33m5edcd39[m Update summarizeSpecs.ts
+[33mc2edec7[m Add Claude SDK, settings UI, and packaging
+[33md42d414[m Add 'Get Specs' modal and summarizeSpecs prompt
+[33mc808cef[m Add editor compare/diff UI and logic
+[33m372287c[m Add per-editor terminal and integrate UI
+[33m21cbbe8[m Add terminal theming and theme switching
+[33m0740b98[m Add PTY-backed terminal and split pane UI
+[33m94cffe6[m Add toolbar, theme manager, and resizable editors
+[33md0bbce2[m Initial Electron + Vite multi-editor scaffold
