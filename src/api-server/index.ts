@@ -4,14 +4,23 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { spawn } from 'child_process';
+import { summarizeSpecs } from '../prompts/summarizeSpecs';
 
 const PORT = Number(process.env.ONLYSPECS_API_PORT ?? 3580);
 const WORKSPACE_BASE = path.join(os.homedir(), 'Documents', 'OnlySpecs', 'api-workspaces');
+
+const OUTPUT_TYPE_CONSTRAINTS: Record<string, string> = {
+  web: '单文件 HTML 应用，内嵌 CSS 和 JavaScript，无外部依赖，可直接在浏览器运行',
+  exe: 'Python 桌面应用，使用 pygame 或 tkinter，包含 requirements.txt 列出所有依赖',
+  pwa: '渐进式 Web 应用，包含 manifest.json，响应式设计适配移动设备',
+  source: '标准源代码结构，遵循最佳实践和代码规范'
+};
 
 interface Task {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   prompt: string;
+  outputType?: string;
   workspacePath: string;
   specsPath: string;
   codePath: string;
@@ -42,61 +51,103 @@ async function createWorkspace(taskId: string): Promise<{ workspacePath: string;
   return { workspacePath, specsPath, codePath };
 }
 
-async function startClaudeGeneration(task: Task): Promise<void> {
-  task.status = 'running';
-  task.updatedAt = new Date();
-
-  try {
-    // Write specs file
-    await fs.writeFile(task.specsPath, task.prompt, 'utf-8');
-    task.logs.push(`[${new Date().toISOString()}] Specs file created: ${task.specsPath}`);
-
-    // Create code directory
-    await ensureDir(task.codePath);
-    task.logs.push(`[${new Date().toISOString()}] Code directory created: ${task.codePath}`);
-
-    // Start Claude CLI with --print flag to avoid interactive UI
-    const claudePrompt = `Read the specs file at ${task.specsPath} and implement the code in ${task.codePath}. Follow the specifications exactly.`;
+async function runClaudeProcess(task: Task, prompt: string, cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
     const args = ['--dangerously-skip-permissions', '--print'];
-
-    task.logs.push(`[${new Date().toISOString()}] Starting Claude CLI...`);
-
     const child = spawn('claude', args, {
-      cwd: task.workspacePath,
+      cwd,
       env: { ...process.env },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     task.childProcess = child;
-
-    // Write prompt to stdin and close it
-    child.stdin.write(claudePrompt);
+    child.stdin.write(prompt);
     child.stdin.end();
 
     child.stdout.on('data', (data: Buffer) => {
-      const text = data.toString();
-      task.logs.push(text);
+      task.logs.push(data.toString());
       task.updatedAt = new Date();
     });
 
     child.stderr.on('data', (data: Buffer) => {
-      const text = data.toString();
-      task.logs.push(`[STDERR] ${text}`);
+      task.logs.push(`[STDERR] ${data.toString()}`);
       task.updatedAt = new Date();
     });
 
     child.on('close', (exitCode) => {
+      task.childProcess = undefined;
       if (exitCode === 0) {
-        task.status = 'completed';
-        task.logs.push(`[${new Date().toISOString()}] Claude CLI completed successfully`);
+        resolve();
       } else {
         task.status = 'failed';
         task.error = `Claude CLI exited with code ${exitCode}`;
-        task.logs.push(`[${new Date().toISOString()}] ${task.error}`);
+        reject(new Error(task.error));
       }
-      task.updatedAt = new Date();
-      task.childProcess = undefined;
     });
+  });
+}
+
+async function startClaudeGeneration(task: Task): Promise<void> {
+  task.status = 'running';
+  task.updatedAt = new Date();
+
+  try {
+    const outputType = task.outputType || 'source';
+
+    // Phase 1: Prepare files
+    await fs.writeFile(task.specsPath, task.prompt, 'utf-8');
+    task.logs.push(`[${new Date().toISOString()}] Specs file created`);
+
+    const instructionsContent = `${summarizeSpecs}
+
+---
+
+## 用户需求
+
+${task.prompt}
+
+## 输出类型要求
+
+**类型**: ${outputType}
+**约束**: ${OUTPUT_TYPE_CONSTRAINTS[outputType]}
+`;
+
+    const instructionsPath = path.join(task.workspacePath, 'summarize_specs_instructions.md');
+    await fs.writeFile(instructionsPath, instructionsContent, 'utf-8');
+    task.logs.push(`[${new Date().toISOString()}] Instructions file created`);
+
+    await ensureDir(task.codePath);
+
+    // Phase 2: Architecture analysis and code generation
+    const generatePrompt = `请执行以下任务：
+
+第一步：阅读 specs_v0001.md 了解用户需求，阅读 summarize_specs_instructions.md 了解架构分析框架。
+
+第二步：在当前目录创建 output_specs.md，按照框架的 14 个章节详细分析项目架构（每个章节至少 3-5 段详细说明）。
+
+第三步：基于 output_specs.md 的架构分析，在 ${task.codePath} 实现完整代码。必须包含：
+- 完整的项目结构（多个文件，不只是单个 HTML）
+- 所有必要的配置文件
+- 依赖管理文件
+- README 说明文档
+
+严格遵循输出类型约束：${OUTPUT_TYPE_CONSTRAINTS[outputType]}
+
+不要问问题，直接开始。`;
+    await runClaudeProcess(task, generatePrompt, task.workspacePath);
+
+    // Phase 3: Test and fix
+    if (task.status === 'running') {
+      task.logs.push(`[${new Date().toISOString()}] Starting test and fix phase...`);
+
+      const testPrompt = `请在当前文件夹运行构建和测试，创建 100-1000 个测试用例（单元测试+集成测试）。如有错误，修复代码并重新运行直到所有测试通过。打印测试结果。不要问问题，完成后立即退出。`;
+
+      await runClaudeProcess(task, testPrompt, task.codePath);
+    }
+
+    task.status = 'completed';
+    task.logs.push(`[${new Date().toISOString()}] All phases completed successfully`);
+    task.updatedAt = new Date();
 
   } catch (error: any) {
     task.status = 'failed';
@@ -124,7 +175,7 @@ app.use((req, res, next) => {
 // POST /generate - Create a new generation task
 app.post('/generate', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, outputType = 'source' } = req.body;
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Invalid prompt. Must be a non-empty string.' });
@@ -137,6 +188,7 @@ app.post('/generate', async (req, res) => {
       id: taskId,
       status: 'pending',
       prompt,
+      outputType,
       workspacePath,
       specsPath,
       codePath,

@@ -113,13 +113,13 @@ class GenerateResponse(BaseModel):
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate_code(request: GenerateRequest):
     try:
-        # Enhance prompt based on output type
-        enhanced_prompt = enhance_prompt(request.prompt, request.outputType)
-
         async with httpx.AsyncClient(timeout=API_TIMEOUT, proxies=HTTPX_PROXIES) as client:
             response = await client.post(
                 f"{ONLYSPECS_API_URL}/generate",
-                json={"prompt": enhanced_prompt}
+                json={
+                    "prompt": request.prompt,
+                    "outputType": request.outputType
+                }
             )
             response.raise_for_status()
             data = response.json()
