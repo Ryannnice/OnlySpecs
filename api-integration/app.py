@@ -75,6 +75,7 @@ def translate_log(text: str) -> str:
         result = re.sub(r'\b' + re.escape(en) + r'\b', zh, result, flags=re.IGNORECASE)
     return result
 
+# 前端对接OnlySpecs的核心prompt增强
 def enhance_prompt(prompt: str, output_type: str) -> str:
     """Enhance prompt based on output type"""
     enhancements = {

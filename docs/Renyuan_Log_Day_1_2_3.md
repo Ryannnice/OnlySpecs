@@ -446,6 +446,10 @@ https://www.bilibili.com/video/BV1eUxve7Ein/?share_source=copy_web&vd_source=035
 https://fastapi.org.cn/python-types/#pydantic-models
 ```
 
+###
+
+上下文工程 Context Engineering
+
 ### 谕书的Workshop框架和API：
 
 项目框架采用FC容器(每个项目一个)，而不是fs操作本地文件
@@ -538,3 +542,18 @@ OnlySpecs 的现有架构梳理：
                                                                                                                                             
   两条路径互相独立，不共享代码。       
 ```
+
+
+# ***2025.3.23***
+
+## 知识学习
+
+
+## 实践
+
+### Debug 网络代理
+
+### 完善数据流向
+
+优化prompt以暴露onlyspecs原有复杂文档生成能力
+
